@@ -19,6 +19,7 @@ const routes = [
       { path: '', name: 'StudentHome', component: () => import('@/views/student/HomeView.vue') },
       { path: 'emotion', name: 'EmotionDetect', component: () => import('@/views/student/EmotionView.vue') },
       { path: 'records', name: 'StudentRecords', component: () => import('@/views/student/RecordsView.vue') },
+      { path: 'trend', name: 'StudentTrend', component: () => import('@/views/student/TrendView.vue') },
     ],
   },
   {

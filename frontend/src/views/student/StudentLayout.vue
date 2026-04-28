@@ -12,6 +12,9 @@
         <el-menu-item index="/student/records">
           <span>历史记录</span>
         </el-menu-item>
+        <el-menu-item index="/student/trend">
+          <span>趋势分析</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

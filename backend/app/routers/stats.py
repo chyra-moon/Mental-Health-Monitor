@@ -11,17 +11,26 @@ router = APIRouter(prefix="/stats", tags=["统计"])
 
 
 @router.get("/student/trend")
-def student_trend(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def student_trend(
+    days: int = 7,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from datetime import datetime, timedelta
+
+    since = datetime.utcnow() - timedelta(days=days)
     records = (
         db.query(
             func.date(EmotionRecord.created_at).label("date"),
             EmotionRecord.dominant_emotion,
             func.count().label("count"),
         )
-        .filter(EmotionRecord.user_id == user.id)
+        .filter(
+            EmotionRecord.user_id == user.id,
+            EmotionRecord.created_at >= since,
+        )
         .group_by("date", EmotionRecord.dominant_emotion)
         .order_by("date")
-        .limit(30)
         .all()
     )
     return {"code": 200, "message": "ok", "data": [{"date": str(r.date), "emotion": r.dominant_emotion, "count": r.count} for r in records]}
