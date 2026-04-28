@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -I{} taskkill /f /pid {})",
+      "Bash(taskkill /f /fi \"IMAGENAME eq uvicorn.exe\")",
+      "Bash(taskkill /f /fi \"IMAGENAME eq python.exe\")",
+      "Bash(uvicorn app.main:app)",
+      "Bash(taskkill /f /pid 2160)",
+      "Bash(taskkill /f /pid 4572)",
+      "Bash(taskkill /f /pid 5572)",
+      "Bash(taskkill /f /pid 15844)",
+      "Bash(taskkill /f /pid 24224)",
+      "Bash(tasklist /fi \"PID eq 2160\" /fo csv)",
+      "Bash(tasklist /fi \"PID eq 4572\" /fo csv)",
+      "Bash(tasklist /fi \"PID eq 5572\" /fo csv)",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8000 -State Listen | Select-Object -ExpandProperty OwningProcess | Get-Process | Select-Object Id, ProcessName\")",
+      "Bash(wmic process *)",
+      "Bash(powershell -Command \"tasklist /FI 'PID eq 2160' /FO CSV\")",
+      "Bash(taskkill.exe /f /im uvicorn.exe)",
+      "Bash(taskkill.exe /f /im python.exe)",
+      "Bash(taskkill.exe /f /fi \"PID ge 0\" /fi \"IMAGENAME eq uvicorn.exe\")",
+      "Bash(uvicorn app.main:app --host 127.0.0.1 --port 8001)",
+      "Bash(curl -s http://localhost:8001/api/health)",
+      "Bash(powershell -Command \"netstat -ano | Select-String ':8000 ' | Select-String 'LISTENING'\")",
+      "Bash(powershell -Command \"Get-Process -Id 2160,4572,5572,15844,24224 -IncludeUserName | Format-Table Id,ProcessName,UserName -AutoSize\")",
+      "Bash(curl -L -o \"C:/Users/陈乐/.deepface/weights/facial_expression_model_weights.h5\" \"https://github.com/serengil/deepface_models/releases/download/v1.0/facial_expression_model_weights.h5\")",
+      "Read(//c/Users/陈乐/.deepface/weights/**)"
+    ]
+  }
+}

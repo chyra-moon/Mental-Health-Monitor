@@ -1,0 +1,33 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="cplex" />
+          <option value="Flask" />
+          <option value="gurobipy" />
+          <option value="highspy" />
+          <option value="numpy" />
+          <option value="openpyxl" />
+          <option value="ortools" />
+          <option value="pandas" />
+          <option value="pulp" />
+          <option value="PyMySQL" />
+          <option value="python-dotenv" />
+          <option value="python_dateutil" />
+          <option value="PyYAML" />
+          <option value="SQLAlchemy" />
+          <option value="Werkzeug" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="sqlalchemy.*" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>

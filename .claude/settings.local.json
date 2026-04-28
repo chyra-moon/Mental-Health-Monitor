@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(pip --version)",
+      "Bash(pip3 --version)",
+      "Bash(mysql --version)",
+      "Bash(where node *)",
+      "Bash(where python *)",
+      "Bash(where mysql *)",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(python -c \"from passlib.context import CryptContext; print\\('passlib ok'\\)\")",
+      "Bash(pip install *)",
+      "Bash(python -m app.init)",
+      "Bash(python -c \"from passlib.context import CryptContext; ctx = CryptContext\\(schemes=['bcrypt']\\); print\\(ctx.hash\\('admin123'\\)\\)\")",
+      "Bash(pip list *)",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import pymysql; pymysql.connect\\(host='localhost', port=3306, user='root', password=''\\)\")",
+      "Bash(uvicorn app.main:app --reload)",
+      "Bash(curl -s http://localhost:8000/api/health)",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/register -H \"Content-Type: application/json\" -d '{\"username\":\"test001\",\"password\":\"123456\",\"real_name\":\"测试学生\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/register -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"test001\\\\\",\\\\\"password\\\\\":\\\\\"123456\\\\\",\\\\\"real_name\\\\\":\\\\\"测试学生\\\\\"}\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/register -H \"Content-Type: application/json\" -d '{\"username\":\"test001\",\"password\":\"123456\",\"real_name\":\"test\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"test001\",\"password\":\"123456\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(curl -s http://localhost:8000/api/auth/me -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzc3NDUzNDU2fQ.l4H6wj7byvpRFsQneJtUB1wHnk3SVJDyHKj8ksLm3WU')"
+    ]
+  }
+}
