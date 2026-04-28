@@ -9,6 +9,12 @@
         <el-menu-item index="/admin/warnings">
           <span>风险预警</span>
         </el-menu-item>
+        <el-menu-item index="/admin/students">
+          <span>学生列表</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/records">
+          <span>识别记录</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

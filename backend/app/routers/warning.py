@@ -48,8 +48,10 @@ def admin_list(
             "class_name": u.class_name if u else None,
             "warning_level": w.warning_level,
             "reason": w.reason,
+            "suggestion": w.suggestion,
             "status": w.status,
             "created_at": w.created_at.isoformat(),
+            "handled_at": w.handled_at.isoformat() if w.handled_at else None,
         })
 
     return {"code": 200, "message": "ok", "data": data}

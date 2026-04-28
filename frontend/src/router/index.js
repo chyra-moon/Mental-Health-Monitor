@@ -18,6 +18,7 @@ const routes = [
     children: [
       { path: '', name: 'StudentHome', component: () => import('@/views/student/HomeView.vue') },
       { path: 'emotion', name: 'EmotionDetect', component: () => import('@/views/student/EmotionView.vue') },
+      { path: 'records', name: 'StudentRecords', component: () => import('@/views/student/RecordsView.vue') },
     ],
   },
   {
@@ -27,6 +28,8 @@ const routes = [
     children: [
       { path: '', name: 'AdminHome', component: () => import('@/views/admin/HomeView.vue') },
       { path: 'warnings', name: 'WarningList', component: () => import('@/views/admin/WarningView.vue') },
+      { path: 'students', name: 'StudentList', component: () => import('@/views/admin/StudentsView.vue') },
+      { path: 'records', name: 'AdminRecords', component: () => import('@/views/admin/RecordsView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },

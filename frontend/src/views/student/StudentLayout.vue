@@ -9,6 +9,9 @@
         <el-menu-item index="/student/emotion">
           <span>情绪识别</span>
         </el-menu-item>
+        <el-menu-item index="/student/records">
+          <span>历史记录</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
