@@ -1,0 +1,110 @@
+:root {
+  --mh-primary: #2f7df6;
+  --mh-primary-strong: #145ee8;
+  --mh-cyan: #35c6e8;
+  --mh-mint: #37d5a7;
+  --mh-ink: #17315f;
+  --mh-text: #243b63;
+  --mh-muted: #7d8fb3;
+  --mh-line: rgba(88, 126, 190, 0.16);
+  --mh-soft: rgba(255, 255, 255, 0.94);
+  --mh-shadow: 0 8px 20px rgba(54, 96, 160, 0.08);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  color: var(--mh-text);
+  background:
+    linear-gradient(135deg, #f7fbff 0%, #eef6ff 48%, #f8fcff 100%);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.page {
+  color: var(--mh-text);
+}
+
+.page-header {
+  padding: 2px 2px 6px;
+}
+
+.page-header h2 {
+  color: var(--mh-ink);
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.page-header p {
+  color: var(--mh-muted) !important;
+}
+
+.el-card {
+  border: 1px solid rgba(104, 145, 205, 0.14) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: var(--mh-shadow) !important;
+}
+
+.el-card__header {
+  color: var(--mh-ink);
+  border-bottom: 1px solid rgba(99, 136, 196, 0.12) !important;
+  font-weight: 700;
+}
+
+.el-table {
+  --el-table-header-bg-color: #f2f7ff;
+  --el-table-tr-bg-color: #ffffff;
+  --el-table-row-hover-bg-color: #edf5ff;
+  color: var(--mh-text) !important;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.el-table th.el-table__cell {
+  color: #5d7198;
+  font-weight: 700;
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: 10px !important;
+  box-shadow: 0 0 0 1px rgba(117, 149, 198, 0.17) inset !important;
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--mh-primary) inset !important;
+}
+
+.el-button {
+  border-radius: 10px !important;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.el-button--primary {
+  background: linear-gradient(135deg, #2f7df6 0%, #4da1ff 100%) !important;
+  border: none !important;
+  box-shadow: 0 6px 14px rgba(47, 125, 246, 0.16);
+}
+
+.el-button--danger {
+  background: linear-gradient(135deg, #ff6b7a 0%, #f04458 100%) !important;
+  border: none !important;
+  box-shadow: 0 6px 14px rgba(240, 68, 88, 0.14);
+}
+
+.el-tag {
+  border-radius: 8px !important;
+  font-weight: 650;
+}
