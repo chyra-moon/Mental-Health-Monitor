@@ -56,6 +56,7 @@ def health_check():
 def ensure_database_tables():
     Base.metadata.create_all(bind=engine)
     _init_default_data()
+    _warm_up_models()
 
 
 def _init_default_data():
@@ -69,6 +70,14 @@ def _init_default_data():
             db.commit()
     finally:
         db.close()
+
+
+def _warm_up_models():
+    """后台预热模型，避免第一次视频帧分析明显卡顿。"""
+    from threading import Thread
+    from app.services.emotion import warm_up_emotion_model
+
+    Thread(target=warm_up_emotion_model, daemon=True).start()
 
 
 from app.routers import auth, emotion, questionnaire, warning, stats, records, users, classes, admin_video_analysis

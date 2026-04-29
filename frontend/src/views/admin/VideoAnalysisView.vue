@@ -28,8 +28,14 @@
         </el-col>
         <el-col :span="5">
           <label class="control-label">&nbsp;</label>
-          <el-button type="primary" size="large" :disabled="!canStart" :loading="phase === 'connecting'" @click="handleStart">
-            {{ phase === 'idle' ? '打开摄像头，开始采集数据' : '分析进行中...' }}
+          <el-button
+            :type="primaryButtonType"
+            size="large"
+            :disabled="primaryButtonDisabled"
+            :loading="primaryButtonLoading"
+            @click="handlePrimaryAction"
+          >
+            {{ primaryButtonLabel }}
           </el-button>
         </el-col>
         <el-col :span="6" class="tr">
@@ -59,15 +65,18 @@
         </div>
 
         <video
-          v-show="phase === 'playing' || phase === 'completed'"
+          v-show="phase === 'playing' || phase === 'summarizing' || phase === 'completed'"
           ref="videoRef"
           class="camera-video"
-          autoplay
           playsinline
           muted
           @loadedmetadata="onVideoMeta"
           @ended="onVideoEnded"
         />
+
+        <div v-if="phase === 'summarizing'" class="camera-complete-overlay">
+          <span>分析汇总中</span>
+        </div>
 
         <div v-if="phase === 'completed'" class="camera-complete-overlay">
           <span>采集完成</span>
@@ -80,13 +89,13 @@
     </el-card>
 
     <!-- 进度条 -->
-    <div v-if="phase === 'playing' || (phase === 'completed' && frameResults.length > 0)" class="progress-bar-area">
+    <div v-if="phase === 'playing' || phase === 'summarizing' || (phase === 'completed' && frameResults.length > 0)" class="progress-bar-area">
       <el-progress
-        :percentage="frameResults.length > 0 ? Math.round((frameResults.length / frameCount) * 100) : 0"
+        :percentage="progressPercentage"
         :status="phase === 'completed' ? 'success' : ''"
         :stroke-width="12"
       >
-        <span class="progress-text">{{ frameResults.length }} / {{ frameCount }} 帧</span>
+        <span class="progress-text">{{ completedFrameCount }} / {{ frameCount }} 帧</span>
       </el-progress>
     </div>
 
@@ -100,7 +109,8 @@
         </el-table-column>
         <el-table-column label="分析状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.analysis_status === 'ok'" type="success" size="small">成功</el-tag>
+            <el-tag v-if="row.analysis_status === 'pending'" type="info" size="small">分析中</el-tag>
+            <el-tag v-else-if="row.analysis_status === 'ok'" type="success" size="small">成功</el-tag>
             <el-tag v-else-if="row.analysis_status === 'no_face'" type="warning" size="small">无人脸</el-tag>
             <el-tag v-else type="danger" size="small">异常</el-tag>
           </template>
@@ -305,6 +315,8 @@ const filteredStudents = computed(() => {
 const phase = ref('idle')
 const sessionId = ref(null)
 const streamSrc = ref(null)
+const lastAnalyzedFilename = ref(null)
+const lastAnalyzedStudentId = ref(null)
 const videoDuration = ref(0)
 const captureIntervalMs = ref(0)
 const frameResults = ref([])
@@ -316,9 +328,12 @@ let frameIndex = 0
 let totalFrameCount = 0
 let canvasEl = null
 let canvasCtx = null
-let uploadQueue = Promise.resolve()
 let finishStarted = false
-let pendingCaptures = 0
+let activeUploads = 0
+let queuedUploads = []
+let uploadPromises = []
+
+const MAX_PARALLEL_UPLOADS = 2
 
 // ========== 历史 ==========
 const historySessions = ref([])
@@ -329,6 +344,26 @@ const detailSession = ref(null)
 const canStart = computed(() =>
   selectedStudentId.value && checkResult.value?.available && phase.value === 'idle'
 )
+const completedFrameCount = computed(() =>
+  frameResults.value.filter((f) => f.analysis_status !== 'pending').length
+)
+const progressPercentage = computed(() => {
+  if (!frameCount.value) return 0
+  return Math.min(100, Math.round((completedFrameCount.value / frameCount.value) * 100))
+})
+const primaryButtonLabel = computed(() => {
+  if (phase.value === 'completed') return '再来一次'
+  if (phase.value === 'idle') return '打开摄像头，开始采集数据'
+  if (phase.value === 'summarizing') return '分析汇总中...'
+  return '正在分析中...'
+})
+const primaryButtonType = computed(() => (phase.value === 'completed' ? 'success' : 'primary'))
+const primaryButtonLoading = computed(() => phase.value === 'connecting' || phase.value === 'summarizing')
+const primaryButtonDisabled = computed(() => {
+  if (phase.value === 'completed') return false
+  if (phase.value === 'idle') return !canStart.value
+  return true
+})
 
 // ========== ECharts ==========
 const chartRef = ref(null)
@@ -380,10 +415,16 @@ async function loadStudents() {
 function onClassChange() {
   selectedStudentId.value = null
   checkResult.value = undefined
+  lastAnalyzedFilename.value = null
+  lastAnalyzedStudentId.value = null
 }
 
 async function onStudentChange(val) {
   checkResult.value = null
+  if (val !== lastAnalyzedStudentId.value) {
+    lastAnalyzedFilename.value = null
+    lastAnalyzedStudentId.value = null
+  }
   if (!val) { checkResult.value = undefined; return }
   try {
     const res = await http.get(`/admin/video/check/${val}`)
@@ -428,22 +469,23 @@ function onVideoMeta() {
 }
 
 // ========== 开始采集 ==========
-async function handleStart() {
-  if (!canStart.value) return
+async function handleStart(filename = null) {
+  if (!selectedStudentId.value) return
+  if (!filename && !canStart.value) return
 
   phase.value = 'connecting'
   frameResults.value = []
   sessionSummary.value = null
   frameIndex = 0
   finishStarted = false
-  pendingCaptures = 0
-  uploadQueue = Promise.resolve()
+  resetUploadState()
   if (chartInst) { chartInst.dispose(); chartInst = null }
 
   try {
     const formData = new FormData()
     formData.append('student_id', selectedStudentId.value)
     formData.append('frame_count', frameCount.value)
+    if (filename) formData.append('filename', filename)
     const res = await http.post('/admin/video/sessions', formData)
     sessionId.value = res.data.id
     streamSrc.value = res.data.stream_src
@@ -475,20 +517,12 @@ async function handleStart() {
   }
 
   try {
-    await vid.play()
+    await waitForVideoMetadata(vid)
+    vid.pause()
   } catch (e) {
     phase.value = 'idle'
-    ElMessage.error('视频播放失败')
+    ElMessage.error(e.message || '视频元数据加载失败')
     return
-  }
-
-  phase.value = 'playing'
-
-  if (!vid.duration) {
-    await new Promise((resolve) => {
-      const check = () => { if (vid.duration) resolve(); else setTimeout(check, 100) }
-      check()
-    })
   }
   onVideoMeta()
 
@@ -496,13 +530,49 @@ async function handleStart() {
 
   totalFrameCount = frameCount.value
   frameIndex = 0
-  startCaptureLoop()
+  phase.value = 'playing'
+  await captureFramesBySeeking()
+  await finishSession()
 }
 
-function startCaptureLoop() {
-  const intervalMs = captureIntervalMs.value
-  if (intervalMs <= 0) return
-  captureNextFrame(0, intervalMs)
+async function handlePrimaryAction() {
+  if (phase.value === 'completed') {
+    const filename = lastAnalyzedStudentId.value === selectedStudentId.value ? lastAnalyzedFilename.value : null
+    resetAnalysisForNextRun()
+    if (filename) {
+      await handleStart(filename)
+      return
+    }
+    if (selectedStudentId.value) {
+      await onStudentChange(selectedStudentId.value)
+      if (checkResult.value?.available) await handleStart()
+    }
+    return
+  }
+
+  await handleStart()
+}
+
+function resetAnalysisForNextRun() {
+  clearTimeout(captureTimer)
+  resetUploadState()
+  frameResults.value = []
+  sessionSummary.value = null
+  sessionId.value = null
+  streamSrc.value = null
+  videoDuration.value = 0
+  captureIntervalMs.value = 0
+  frameIndex = 0
+  totalFrameCount = 0
+  finishStarted = false
+  phase.value = 'idle'
+  if (chartInst) {
+    chartInst.dispose()
+    chartInst = null
+  }
+  const vid = videoRef.value
+  if (vid?.src?.startsWith('blob:')) URL.revokeObjectURL(vid.src)
+  if (vid) vid.removeAttribute('src')
 }
 
 function ensureCaptureCanvas() {
@@ -519,79 +589,166 @@ function resizeCaptureCanvas() {
   const vid = videoRef.value
   const sourceWidth = vid?.videoWidth || 640
   const sourceHeight = vid?.videoHeight || 480
-  const maxSide = 1280
+  const maxSide = 960
   const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight))
 
   canvasEl.width = Math.max(1, Math.round(sourceWidth * scale))
   canvasEl.height = Math.max(1, Math.round(sourceHeight * scale))
 }
 
-function captureNextFrame(delayMs, intervalMs) {
-  captureTimer = setTimeout(async () => {
-    if (phase.value !== 'playing' || frameIndex >= totalFrameCount) {
-      await finishSession()
-      return
-    }
+async function waitForVideoMetadata(vid) {
+  if (Number.isFinite(vid.duration) && vid.duration > 0 && vid.readyState >= 1) return
 
-    const vid = videoRef.value
-    if (!vid || vid.ended) {
-      await finishSession()
-      return
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup()
+      reject(new Error('视频元数据加载超时'))
+    }, 10000)
+    const cleanup = () => {
+      clearTimeout(timeout)
+      vid.removeEventListener('loadedmetadata', onLoaded)
+      vid.removeEventListener('error', onError)
     }
-    if (vid.readyState < 2) {
-      captureNextFrame(50, intervalMs)
-      return
+    const onLoaded = () => {
+      cleanup()
+      resolve()
     }
+    const onError = () => {
+      cleanup()
+      reject(new Error('视频元数据加载失败'))
+    }
+    vid.addEventListener('loadedmetadata', onLoaded, { once: true })
+    vid.addEventListener('error', onError, { once: true })
+    vid.load()
+  })
+}
+
+async function captureFramesBySeeking() {
+  const vid = videoRef.value
+  if (!vid || !Number.isFinite(vid.duration) || vid.duration <= 0) {
+    ElMessage.error('视频时长无效，无法抽帧')
+    return
+  }
+
+  const total = frameCount.value
+  const safeDuration = Math.max(0, vid.duration - 0.05)
+  for (let idx = 0; idx < total; idx++) {
+    if (phase.value !== 'playing') return
+
+    const targetTime = Math.min(safeDuration, ((idx + 0.5) * vid.duration) / total)
+    await seekVideo(vid, targetTime)
 
     const timestampMs = Math.round(vid.currentTime * 1000)
-    const idx = frameIndex
-    frameIndex++
-    pendingCaptures++
-
     try {
       canvasCtx.drawImage(vid, 0, 0, canvasEl.width, canvasEl.height)
+      const blob = await canvasToBlob()
+      enqueueFrameUpload(idx, timestampMs, blob)
     } catch {
-      pendingCaptures--
-      recordFrameResult({
+      upsertFrameResult({
         frame_index: idx, timestamp_ms: timestampMs,
         analysis_status: 'error', dominant_emotion: null,
         confidence: null, emotion_scores: null, error_message: '抽帧失败',
       })
-      captureNextFrame(intervalMs, intervalMs)
-      return
     }
 
-    let blob
-    try {
-      blob = await new Promise((resolve, reject) => {
-        canvasEl.toBlob((b) => { if (b) resolve(b); else reject(new Error('toBlob failed')) }, 'image/jpeg', 0.85)
-      })
-    } catch {
-      recordFrameResult({
-        frame_index: idx, timestamp_ms: timestampMs,
-        analysis_status: 'error', dominant_emotion: null,
-        confidence: null, emotion_scores: null, error_message: '抽帧失败',
-      })
-      pendingCaptures--
-      captureNextFrame(intervalMs, intervalMs)
-      return
-    }
+    frameIndex = idx + 1
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+  }
+}
 
-    enqueueFrameUpload(idx, timestampMs, blob)
-    pendingCaptures--
+async function seekVideo(vid, targetTime) {
+  if (Math.abs(vid.currentTime - targetTime) < 0.03) {
+    await waitForFrameReady(vid)
+    return
+  }
 
-    if (frameIndex >= totalFrameCount) {
-      await finishSession()
-      return
+  await new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, 3000)
+    const cleanup = () => {
+      clearTimeout(timeout)
+      vid.removeEventListener('seeked', onSeeked)
     }
-    captureNextFrame(intervalMs, intervalMs)
-  }, delayMs)
+    const onSeeked = () => {
+      cleanup()
+      resolve()
+    }
+    vid.addEventListener('seeked', onSeeked, { once: true })
+    vid.currentTime = targetTime
+  })
+  await waitForFrameReady(vid)
+}
+
+async function waitForFrameReady(vid) {
+  if (vid.readyState >= 2) return
+
+  await new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, 2000)
+    const cleanup = () => {
+      clearTimeout(timeout)
+      vid.removeEventListener('loadeddata', onReady)
+      vid.removeEventListener('canplay', onReady)
+    }
+    const onReady = () => {
+      cleanup()
+      resolve()
+    }
+    vid.addEventListener('loadeddata', onReady, { once: true })
+    vid.addEventListener('canplay', onReady, { once: true })
+  })
+}
+
+function canvasToBlob() {
+  return new Promise((resolve, reject) => {
+    canvasEl.toBlob((blob) => {
+      if (blob) resolve(blob)
+      else reject(new Error('toBlob failed'))
+    }, 'image/jpeg', 0.85)
+  })
+}
+
+function resetUploadState() {
+  activeUploads = 0
+  queuedUploads = []
+  uploadPromises = []
 }
 
 function enqueueFrameUpload(idx, timestampMs, blob) {
-  uploadQueue = uploadQueue
-    .catch(() => {})
-    .then(() => uploadFrame(idx, timestampMs, blob))
+  upsertFrameResult({
+    frame_index: idx,
+    timestamp_ms: timestampMs,
+    analysis_status: 'pending',
+    dominant_emotion: null,
+    confidence: null,
+    emotion_scores: null,
+    error_message: '等待分析',
+  })
+
+  const promise = new Promise((resolve) => {
+    queuedUploads.push({
+      run: () => uploadFrame(idx, timestampMs, blob),
+      resolve,
+    })
+    pumpUploadQueue()
+  })
+  uploadPromises.push(promise)
+}
+
+function pumpUploadQueue() {
+  while (activeUploads < MAX_PARALLEL_UPLOADS && queuedUploads.length > 0) {
+    const item = queuedUploads.shift()
+    activeUploads++
+    item.run().finally(() => {
+      activeUploads--
+      item.resolve()
+      pumpUploadQueue()
+    })
+  }
 }
 
 async function uploadFrame(idx, timestampMs, blob) {
@@ -606,7 +763,7 @@ async function uploadFrame(idx, timestampMs, blob) {
       timeout: 60000,
     })
 
-    recordFrameResult({
+    upsertFrameResult({
       frame_index: idx,
       timestamp_ms: timestampMs,
       analysis_status: res.data?.analysis_status || 'error',
@@ -616,7 +773,7 @@ async function uploadFrame(idx, timestampMs, blob) {
       error_message: res.data?.error_message || null,
     })
   } catch {
-    recordFrameResult({
+    upsertFrameResult({
       frame_index: idx, timestamp_ms: timestampMs,
       analysis_status: 'error', dominant_emotion: null,
       confidence: null, emotion_scores: null, error_message: '请求失败',
@@ -624,8 +781,10 @@ async function uploadFrame(idx, timestampMs, blob) {
   }
 }
 
-function recordFrameResult(result) {
-  frameResults.value.push(result)
+function upsertFrameResult(result) {
+  const index = frameResults.value.findIndex((item) => item.frame_index === result.frame_index)
+  if (index >= 0) frameResults.value[index] = result
+  else frameResults.value.push(result)
   frameResults.value.sort((a, b) => a.frame_index - b.frame_index)
   updateChart()
 }
@@ -634,21 +793,22 @@ async function finishSession() {
   if (finishStarted) return
   finishStarted = true
   clearTimeout(captureTimer)
-  phase.value = 'completed'
+  phase.value = 'summarizing'
 
   if (!sessionId.value) return
 
-  while (pendingCaptures > 0) {
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
-  await uploadQueue.catch(() => {})
+  await Promise.allSettled(uploadPromises)
 
   try {
     const res = await http.post(`/admin/video/sessions/${sessionId.value}/complete`)
     sessionSummary.value = res.data
+    lastAnalyzedFilename.value = res.data?.video_filename || null
+    lastAnalyzedStudentId.value = selectedStudentId.value
+    phase.value = 'completed'
     // 刷新检查结果（视频已重命名）
     if (selectedStudentId.value) onStudentChange(selectedStudentId.value)
   } catch {
+    phase.value = 'completed'
     ElMessage.error('汇总评估失败')
   }
 

@@ -162,6 +162,7 @@ def stream_video(
 def create_session(
     student_id: int = Form(...),
     frame_count: int = Form(20),
+    filename: str | None = Form(None),
     user: User = Depends(require_role("admin")),
     db: Session = Depends(get_db),
 ):
@@ -184,7 +185,13 @@ def create_session(
     if not folder:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无法定位学生视频目录，请确认学生已分配班级并完善个人信息")
 
-    video_path = _find_unprocessed_video(folder)
+    if filename:
+        safe_filename = Path(filename).name
+        video_path = folder / safe_filename
+        if not video_path.is_file() or video_path.suffix.lower() not in EXT_WHITELIST:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="视频文件不存在或格式不支持")
+    else:
+        video_path = _find_unprocessed_video(folder)
     if not video_path:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"当前没有{student.real_name or student.username}的最新数据")
 
@@ -256,7 +263,7 @@ def analyze_frame(
         return f
 
     try:
-        result = to_jsonable(emotion_svc.analyze_face(image_bytes))
+        result = to_jsonable(emotion_svc.analyze_video_frame(image_bytes))
     except ValueError as e:
         f = _save_frame("no_face", err_msg=str(e))
         return {
@@ -335,24 +342,46 @@ def complete_session(
     emotion_counts = Counter(f.dominant_emotion for f in ok_frames)
     dominant_emotion = emotion_counts.most_common(1)[0][0]
 
-    dom_confidences = [float(f.confidence) for f in ok_frames if f.dominant_emotion == dominant_emotion]
-    dominant_confidence = round(sum(dom_confidences) / len(dom_confidences), 4)
-
-    negative_count = sum(1 for f in ok_frames if f.dominant_emotion in NEGATIVE_EMOTIONS)
-    negative_ratio = round(negative_count / len(ok_frames), 4)
-
     emotion_distribution = dict(emotion_counts)
 
     score_sums = {}
     score_counts = {}
+    negative_score_frame_count = 0
     for f in ok_frames:
         if f.emotion_scores:
+            negative_frame_score = sum(float(f.emotion_scores.get(emo, 0) or 0) for emo in NEGATIVE_EMOTIONS)
+            if negative_frame_score >= 0.35:
+                negative_score_frame_count += 1
             for emo, val in f.emotion_scores.items():
                 score_sums[emo] = score_sums.get(emo, 0) + float(val)
                 score_counts[emo] = score_counts.get(emo, 0) + 1
     average_emotion_scores = {e: round(score_sums[e] / score_counts[e], 4) for e in score_sums}
 
-    risk_level, reason, suggestion = evaluate_video_risk(dominant_emotion, negative_ratio, len(ok_frames))
+    negative_count = sum(1 for f in ok_frames if f.dominant_emotion in NEGATIVE_EMOTIONS)
+    dominant_negative_ratio = negative_count / len(ok_frames)
+    score_negative_ratio = negative_score_frame_count / len(ok_frames)
+    negative_ratio = round(max(dominant_negative_ratio, score_negative_ratio), 4)
+
+    strongest_negative_emotion = max(
+        NEGATIVE_EMOTIONS,
+        key=lambda emo: float(average_emotion_scores.get(emo, 0) or 0),
+    )
+    strongest_negative_score = float(average_emotion_scores.get(strongest_negative_emotion, 0) or 0)
+    if dominant_emotion == "neutral" and strongest_negative_score >= 0.2:
+        dominant_emotion = strongest_negative_emotion
+
+    dom_confidences = [float(f.confidence) for f in ok_frames if f.dominant_emotion == dominant_emotion]
+    if dom_confidences:
+        dominant_confidence = round(sum(dom_confidences) / len(dom_confidences), 4)
+    else:
+        dominant_confidence = round(strongest_negative_score, 4)
+
+    risk_level, reason, suggestion = evaluate_video_risk(
+        dominant_emotion,
+        negative_ratio,
+        len(ok_frames),
+        average_emotion_scores,
+    )
 
     session.status = "completed"
     session.analyzed_frames = len(ok_frames)
