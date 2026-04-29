@@ -10,7 +10,6 @@ def validate_bcrypt_password(value: str) -> str:
 class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=2, max_length=50)
     password: str = Field(..., min_length=6, max_length=50)
-    real_name: str = Field(..., min_length=1, max_length=50)
 
     @field_validator("password")
     @classmethod
@@ -28,12 +27,19 @@ class LoginRequest(BaseModel):
         return validate_bcrypt_password(value)
 
 
+class ProfileUpdateRequest(BaseModel):
+    real_name: str = Field(..., min_length=1, max_length=50)
+    gender: str | None = None
+    class_id: int | None = None
+
+
 class UserResponse(BaseModel):
     id: int
     username: str
-    real_name: str
+    real_name: str | None = None
     role: str
     gender: str | None = None
+    class_id: int | None = None
     class_name: str | None = None
 
     model_config = {"from_attributes": True}

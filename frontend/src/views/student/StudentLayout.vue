@@ -12,6 +12,9 @@
         <el-menu-item index="/student">
           <span>首页</span>
         </el-menu-item>
+        <el-menu-item index="/student/profile">
+          <span>个人资料</span>
+        </el-menu-item>
         <el-menu-item index="/student/emotion">
           <span>情绪识别</span>
         </el-menu-item>

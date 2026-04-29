@@ -13,6 +13,9 @@
         <el-menu-item index="/admin">
           <span>首页</span>
         </el-menu-item>
+        <el-menu-item index="/admin/classes">
+          <span>班级列表</span>
+        </el-menu-item>
         <el-menu-item index="/admin/warnings">
           <span>风险预警</span>
         </el-menu-item>

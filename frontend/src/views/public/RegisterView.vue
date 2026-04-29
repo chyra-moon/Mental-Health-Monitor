@@ -2,15 +2,13 @@
   <div class="login-container">
     <div class="login-card">
       <h1>注册账号</h1>
+      <p class="subtitle">注册后请完善个人信息</p>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="0">
         <el-form-item prop="username">
           <el-input v-model="form.username" placeholder="用户名" />
         </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="密码" show-password />
-        </el-form-item>
-        <el-form-item prop="real_name">
-          <el-input v-model="form.real_name" placeholder="姓名" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" class="login-btn" @click="handleRegister" :loading="loading">注册</el-button>
@@ -37,7 +35,6 @@ const loading = ref(false)
 const form = reactive({
   username: '',
   password: '',
-  real_name: '',
 })
 
 const rules = {
@@ -46,7 +43,6 @@ const rules = {
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码至少 6 位', trigger: 'blur' },
   ],
-  real_name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
 }
 
 const handleRegister = async () => {
@@ -85,8 +81,15 @@ h1 {
   text-align: center;
   font-size: 22px;
   color: #333;
-  margin-bottom: 32px;
+  margin-bottom: 8px;
   letter-spacing: 0;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #909399;
+  margin-bottom: 24px;
 }
 
 .login-btn {

@@ -55,9 +55,23 @@ def health_check():
 @app.on_event("startup")
 def ensure_database_tables():
     Base.metadata.create_all(bind=engine)
+    _init_default_data()
 
 
-from app.routers import auth, emotion, questionnaire, warning, stats, records, users, admin_video_analysis
+def _init_default_data():
+    """初始化默认班级等数据。"""
+    from app.database import SessionLocal
+    from app.models.class_model import Class
+    db = SessionLocal()
+    try:
+        if not db.query(Class).filter(Class.name == "一班").first():
+            db.add(Class(name="一班"))
+            db.commit()
+    finally:
+        db.close()
+
+
+from app.routers import auth, emotion, questionnaire, warning, stats, records, users, classes, admin_video_analysis
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(emotion.router, prefix="/api")
@@ -67,3 +81,5 @@ app.include_router(stats.router, prefix="/api")
 app.include_router(records.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(admin_video_analysis.router, prefix="/api")
+app.include_router(classes.router, prefix="/api")
+app.include_router(classes.admin_router, prefix="/api")

@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.database import get_db
 from app.models.user import User
+from app.models.class_model import Class
 from app.models.record import RiskWarning
 from app.utils.deps import get_current_user, require_role
 
@@ -37,6 +38,13 @@ def admin_list(
     user_ids = list(set(w.user_id for w in warnings))
     users = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()}
 
+    # 批量查班级名
+    class_ids = {u.class_id for u in users.values() if u.class_id}
+    class_map = {}
+    if class_ids:
+        for c in db.query(Class).filter(Class.id.in_(class_ids)).all():
+            class_map[c.id] = c.name
+
     data = []
     for w in warnings:
         u = users.get(w.user_id)
@@ -45,7 +53,7 @@ def admin_list(
             "user_id": w.user_id,
             "username": u.username if u else None,
             "real_name": u.real_name if u else None,
-            "class_name": u.class_name if u else None,
+            "class_name": class_map.get(u.class_id) if u and u.class_id else None,
             "warning_level": w.warning_level,
             "reason": w.reason,
             "suggestion": w.suggestion,

@@ -17,6 +17,7 @@ const routes = [
     meta: { role: 'student' },
     children: [
       { path: '', name: 'StudentHome', component: () => import('@/views/student/HomeView.vue') },
+      { path: 'profile', name: 'StudentProfile', component: () => import('@/views/student/ProfileEdit.vue') },
       { path: 'emotion', name: 'EmotionDetect', component: () => import('@/views/student/EmotionView.vue') },
       { path: 'records', name: 'StudentRecords', component: () => import('@/views/student/RecordsView.vue') },
       { path: 'trend', name: 'StudentTrend', component: () => import('@/views/student/TrendView.vue') },
@@ -28,6 +29,7 @@ const routes = [
     meta: { role: 'admin' },
     children: [
       { path: '', name: 'AdminHome', component: () => import('@/views/admin/HomeView.vue') },
+      { path: 'classes', name: 'ClassManage', component: () => import('@/views/admin/ClassManageView.vue') },
       { path: 'warnings', name: 'WarningList', component: () => import('@/views/admin/WarningView.vue') },
       { path: 'students', name: 'StudentList', component: () => import('@/views/admin/StudentsView.vue') },
       { path: 'records', name: 'AdminRecords', component: () => import('@/views/admin/RecordsView.vue') },
@@ -50,6 +52,10 @@ router.beforeEach((to) => {
   }
   if (to.meta.role && to.meta.role !== user.role) {
     return user.role === 'admin' ? '/admin' : '/student'
+  }
+  // 学生登录后未完善个人信息时重定向到信息完善页
+  if (user.role === 'student' && !user.real_name && to.path !== '/student/profile') {
+    return '/student/profile'
   }
 })
 
