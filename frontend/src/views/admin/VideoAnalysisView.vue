@@ -194,7 +194,7 @@
           <el-button size="small" @click="loadHistory" :loading="historyLoading">刷新</el-button>
         </div>
       </template>
-      <el-table v-loading="historyLoading" :data="historySessions" stripe>
+      <el-table v-loading="historyLoading" :data="pagedHistorySessions" stripe style="width: 100%">
         <el-table-column prop="class_name" label="班级" width="100" align="center" />
         <el-table-column prop="student_name" label="学生" width="100" />
         <el-table-column label="留存文件" min-width="200">
@@ -230,6 +230,17 @@
           </template>
         </el-table-column>
       </el-table>
+      <div v-if="historySessions.length > historyPageSize" class="pagination-bar">
+        <span class="page-total">共 {{ historySessions.length }} 条会话</span>
+        <el-pagination
+          v-model:current-page="historyCurrentPage"
+          v-model:page-size="historyPageSize"
+          :page-sizes="[6, 10, 15, 20]"
+          :total="historySessions.length"
+          background
+          layout="sizes, prev, pager, next, jumper"
+        />
+      </div>
     </el-card>
 
     <!-- 详情弹窗 -->
@@ -338,6 +349,8 @@ const MAX_PARALLEL_UPLOADS = 2
 // ========== 历史 ==========
 const historySessions = ref([])
 const historyLoading = ref(false)
+const historyCurrentPage = ref(1)
+const historyPageSize = ref(6)
 const detailVisible = ref(false)
 const detailSession = ref(null)
 
@@ -363,6 +376,10 @@ const primaryButtonDisabled = computed(() => {
   if (phase.value === 'completed') return false
   if (phase.value === 'idle') return !canStart.value
   return true
+})
+const pagedHistorySessions = computed(() => {
+  const start = (historyCurrentPage.value - 1) * historyPageSize.value
+  return historySessions.value.slice(start, start + historyPageSize.value)
 })
 
 // ========== ECharts ==========
@@ -439,6 +456,7 @@ async function loadHistory() {
   try {
     const res = await http.get('/admin/video/sessions', { params: { limit: 50 } })
     historySessions.value = res.data?.items || []
+    historyCurrentPage.value = 1
   } finally {
     historyLoading.value = false
   }
@@ -840,10 +858,13 @@ onBeforeUnmount(() => {
 watch(() => frameResults.value.length, () => {
   nextTick(() => updateChart())
 })
+watch(historyPageSize, () => {
+  historyCurrentPage.value = 1
+})
 </script>
 
 <style scoped>
-.page { padding: 0; }
+.page { max-width: 100%; overflow-x: hidden; padding: 0; }
 .page-header { margin-bottom: 16px; }
 .page-header h2 { margin: 0 0 4px; font-size: 20px; color: #303133; }
 .page-header p { margin: 0; font-size: 13px; color: #909399; }
@@ -898,6 +919,15 @@ watch(() => frameResults.value.length, () => {
 .text-success { color: #67c23a; }
 .reason-area p { margin: 8px 0; color: #606266; line-height: 1.8; }
 
-.history-card { margin-bottom: 16px; }
+.history-card { margin-bottom: 16px; overflow: hidden; }
 .history-header { display: flex; justify-content: space-between; align-items: center; }
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  flex-wrap: wrap;
+}
+.page-total { color: #7d8fb3; font-size: 13px; }
 </style>

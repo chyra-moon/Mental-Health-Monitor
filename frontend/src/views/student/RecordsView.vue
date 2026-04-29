@@ -23,9 +23,9 @@
       </div>
     </div>
 
-    <el-card shadow="never">
+    <el-card class="records-card" shadow="never">
       <el-empty v-if="!loading && records.length === 0" description="暂无识别记录" />
-      <el-table v-else v-loading="loading" :data="records" stripe>
+      <el-table v-else v-loading="loading" :data="pagedRecords" stripe style="width: 100%">
         <el-table-column prop="created_at" label="识别时间" min-width="180">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
@@ -62,6 +62,17 @@
           </template>
         </el-table-column>
       </el-table>
+      <div v-if="records.length > pageSize" class="pagination-bar">
+        <span class="page-total">共 {{ records.length }} 条记录</span>
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[6, 10, 15, 20]"
+          :total="records.length"
+          background
+          layout="sizes, prev, pager, next, jumper"
+        />
+      </div>
     </el-card>
   </div>
 </template>
@@ -74,6 +85,8 @@ import http from '@/api/http'
 
 const loading = ref(false)
 const records = ref([])
+const currentPage = ref(1)
+const pageSize = ref(6)
 const emotionChartRef = ref(null)
 const riskChartRef = ref(null)
 const trendChartRef = ref(null)
@@ -103,12 +116,17 @@ const negativeEmotions = ['sad', 'angry', 'fear', 'disgust']
 
 const emotionCounts = computed(() => countBy(records.value, 'dominant_emotion', emotionKeys))
 const riskCounts = computed(() => countBy(records.value, 'risk_level', riskKeys))
+const pagedRecords = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return records.value.slice(start, start + pageSize.value)
+})
 
 const loadRecords = async () => {
   loading.value = true
   try {
     const res = await http.get('/records/my')
     records.value = res.data || []
+    currentPage.value = 1
     await nextTick()
     renderCharts()
   } finally {
@@ -221,9 +239,17 @@ onBeforeUnmount(() => {
 })
 
 watch(records, () => nextTick(renderCharts))
+watch(pageSize, () => {
+  currentPage.value = 1
+})
 </script>
 
 <style scoped>
+.page {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 .page-header {
   display: flex;
   align-items: center;
@@ -265,6 +291,24 @@ watch(records, () => nextTick(renderCharts))
   height: 220px;
 }
 
+.records-card {
+  overflow: hidden;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  flex-wrap: wrap;
+}
+
+.page-total {
+  color: #7d8fb3;
+  font-size: 13px;
+}
+
 .text-muted {
   color: #909399;
 }
@@ -272,6 +316,10 @@ watch(records, () => nextTick(renderCharts))
 @media (max-width: 960px) {
   .chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .pagination-bar {
+    justify-content: flex-end;
   }
 }
 </style>

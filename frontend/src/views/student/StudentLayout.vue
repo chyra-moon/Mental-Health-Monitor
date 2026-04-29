@@ -234,6 +234,7 @@ const handleLogout = () => {
 
 .workspace {
   min-width: 0;
+  overflow: hidden;
 }
 
 .topbar {
@@ -316,7 +317,9 @@ const handleLogout = () => {
 }
 
 .content-shell {
+  max-width: 100%;
   min-height: calc(100vh - 126px);
+  overflow-x: hidden;
   padding: 22px;
   border: 1px solid rgba(105, 150, 215, 0.12);
   border-radius: 24px;
