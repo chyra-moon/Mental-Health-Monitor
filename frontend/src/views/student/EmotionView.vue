@@ -195,7 +195,7 @@ async function analyzeImage() {
 
     const res = await http.post('/emotion/analyze', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 30000,
+      timeout: 120000,
     })
 
     if (res.data) {
