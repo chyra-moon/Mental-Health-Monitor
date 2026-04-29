@@ -6,8 +6,8 @@
         <p>查看情绪变化趋势和统计概况</p>
       </div>
       <el-radio-group v-model="days" size="small" @change="loadData">
-        <el-radio-button :value="7">近 7 天</el-radio-button>
-        <el-radio-button :value="30">近 30 天</el-radio-button>
+        <el-radio-button :label="7">近 7 天</el-radio-button>
+        <el-radio-button :label="30">近 30 天</el-radio-button>
       </el-radio-group>
     </div>
 
@@ -27,31 +27,33 @@
       <el-col :span="6">
         <el-card shadow="never" class="stat-card">
           <div class="stat-value" :class="warnCount > 0 ? 'danger' : ''">{{ warnCount }}</div>
-          <div class="stat-label">产生预警</div>
+          <div class="stat-label">预警数量</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never" class="stat-card">
           <div class="stat-value">{{ dayCount }}</div>
-          <div class="stat-label">识别天数</div>
+          <div class="stat-label">覆盖天数</div>
         </el-card>
       </el-col>
     </el-row>
 
     <el-row :gutter="16">
       <el-col :span="16">
-        <el-card shadow="never">
+        <el-card shadow="never" class="chart-card">
           <template #header>情绪趋势</template>
-          <div ref="lineChartRef" style="height: 360px"></div>
+          <div v-if="totalCount" ref="lineChartRef" class="chart-box"></div>
+          <el-empty v-else description="暂无趋势数据" />
         </el-card>
       </el-col>
       <el-col :span="8">
-        <el-card shadow="never">
+        <el-card shadow="never" class="chart-card">
           <template #header>情绪分布</template>
-          <div ref="pieChartRef" style="height: 300px"></div>
+          <div v-if="totalCount" ref="pieChartRef" class="chart-box pie-box"></div>
+          <el-empty v-else description="暂无分布数据" />
           <el-divider />
           <div class="emotion-summary">
-            <div class="summary-item" v-for="item in emotionRank" :key="item.emotion">
+            <div v-for="item in emotionRank" :key="item.emotion" class="summary-item">
               <span class="dot" :style="{ background: emotionColor(item.emotion) }"></span>
               <span class="name">{{ emotionLabel(item.emotion) }}</span>
               <span class="count">{{ item.count }} 次</span>
@@ -64,9 +66,9 @@
 </template>
 
 <script setup>
-import { onMounted, ref, nextTick } from 'vue'
-import http from '@/api/http'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import * as echarts from 'echarts'
+import http from '@/api/http'
 
 const days = ref(7)
 const totalCount = ref(0)
@@ -92,20 +94,19 @@ const emotionConfig = {
 
 const negativeEmotions = ['sad', 'angry', 'fear', 'disgust']
 
-const emotionLabel = (value) => emotionConfig[value]?.label || value
-const emotionColor = (value) => emotionConfig[value]?.color || '#999'
+const emotionLabel = (value) => emotionConfig[value]?.label || value || '-'
+const emotionColor = (value) => emotionConfig[value]?.color || '#909399'
 
-const loadData = async () => {
+async function loadData() {
   const [trendRes, warnRes] = await Promise.all([
     http.get('/stats/student/trend', { params: { days: days.value } }),
     http.get('/warnings/my'),
   ])
 
   const raw = trendRes.data || []
-  const warnData = warnRes.data || []
-  warnCount.value = warnData.length
+  const warnings = warnRes.data || []
+  warnCount.value = warnings.length
 
-  // Process trend data
   const dateSet = new Set()
   const emotionGroups = {}
   let total = 0
@@ -123,66 +124,59 @@ const loadData = async () => {
   dayCount.value = dateSet.size
   negativePercent.value = total > 0 ? Math.round((negativeTotal / total) * 100) : 0
 
-  // Emotion ranking
   emotionRank.value = Object.entries(emotionGroups)
     .map(([emotion, dates]) => ({
       emotion,
-      count: Object.values(dates).reduce((a, b) => a + b, 0),
+      count: Object.values(dates).reduce((sum, count) => sum + count, 0),
     }))
     .sort((a, b) => b.count - a.count)
 
   const sortedDates = [...dateSet].sort()
-
-  // Build series for each emotion
-  const allEmotions = Object.keys(emotionConfig)
-  const series = allEmotions
-    .filter((em) => emotionGroups[em])
-    .map((em) => ({
-      name: emotionConfig[em].label,
+  const series = Object.keys(emotionConfig)
+    .filter((emotion) => emotionGroups[emotion])
+    .map((emotion) => ({
+      name: emotionConfig[emotion].label,
       type: 'line',
       smooth: true,
       symbol: 'circle',
       symbolSize: 6,
       lineStyle: { width: 2 },
-      itemStyle: { color: emotionConfig[em].color },
-      data: sortedDates.map((d) => emotionGroups[em]?.[d] || 0),
+      itemStyle: { color: emotionConfig[emotion].color },
+      data: sortedDates.map((date) => emotionGroups[emotion]?.[date] || 0),
     }))
 
-  nextTick(() => {
-    renderLineChart(sortedDates, series)
-    renderPieChart()
-  })
+  await nextTick()
+  renderLineChart(sortedDates, series)
+  renderPieChart()
 }
 
-const renderLineChart = (dates, series) => {
+function renderLineChart(dates, series) {
+  if (!lineChartRef.value) return
   if (lineChart) lineChart.dispose()
   lineChart = echarts.init(lineChartRef.value)
+
   lineChart.setOption({
     tooltip: {
       trigger: 'axis',
       formatter: (params) => {
         const date = params[0].axisValue
         let html = `<strong>${date}</strong><br/>`
-        params.forEach((p) => {
-          if (p.value > 0) {
-            html += `${p.marker} ${p.seriesName}: ${p.value} 次<br/>`
+        params.forEach((item) => {
+          if (item.value > 0) {
+            html += `${item.marker} ${item.seriesName}: ${item.value} 次<br/>`
           }
         })
         return html
       },
     },
     legend: {
-      data: series.map((s) => s.name),
+      data: series.map((item) => item.name),
       bottom: 0,
-      icon: 'circle',
-      itemWidth: 8,
-      itemHeight: 8,
     },
     grid: { left: 40, right: 20, top: 20, bottom: 50 },
     xAxis: {
       type: 'category',
       data: dates,
-      axisLabel: { fontSize: 12 },
     },
     yAxis: {
       type: 'value',
@@ -193,9 +187,11 @@ const renderLineChart = (dates, series) => {
   })
 }
 
-const renderPieChart = () => {
+function renderPieChart() {
+  if (!pieChartRef.value) return
   if (pieChart) pieChart.dispose()
   pieChart = echarts.init(pieChartRef.value)
+
   const data = emotionRank.value
     .filter((item) => item.count > 0)
     .map((item) => ({
@@ -203,23 +199,42 @@ const renderPieChart = () => {
       value: item.count,
       itemStyle: { color: emotionColor(item.emotion) },
     }))
+
   pieChart.setOption({
     tooltip: { trigger: 'item', formatter: '{b}: {c} 次 ({d}%)' },
-    series: {
-      type: 'pie',
-      radius: ['40%', '70%'],
-      center: ['50%', '45%'],
-      data,
-      label: { show: false },
-      emphasis: {
-        label: { show: true, fontSize: 14 },
-        itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' },
+    series: [
+      {
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['50%', '45%'],
+        data,
+        label: { show: false },
       },
-    },
+    ],
   })
 }
 
-onMounted(loadData)
+function resizeCharts() {
+  lineChart?.resize()
+  pieChart?.resize()
+}
+
+onMounted(() => {
+  loadData()
+  window.addEventListener('resize', resizeCharts)
+})
+
+onBeforeUnmount(() => {
+  if (lineChart) {
+    lineChart.dispose()
+    lineChart = null
+  }
+  if (pieChart) {
+    pieChart.dispose()
+    pieChart = null
+  }
+  window.removeEventListener('resize', resizeCharts)
+})
 </script>
 
 <style scoped>
@@ -229,56 +244,80 @@ onMounted(loadData)
   justify-content: space-between;
   margin-bottom: 16px;
 }
+
 .page-header h2 {
   margin: 0 0 6px;
 }
+
 .page-header p {
   margin: 0;
   color: #909399;
 }
+
 .stat-row {
   margin-bottom: 16px;
 }
+
 .stat-card {
   text-align: center;
 }
+
 .stat-value {
   font-size: 32px;
   font-weight: 700;
   color: #303133;
 }
+
 .stat-value.negative {
-  color: #E6A23C;
+  color: #e6a23c;
 }
+
 .stat-value.danger {
-  color: #F56C6C;
+  color: #f56c6c;
 }
+
 .stat-label {
   font-size: 13px;
   color: #909399;
   margin-top: 4px;
 }
+
+.chart-card {
+  min-height: 480px;
+}
+
+.chart-box {
+  width: 100%;
+  height: 360px;
+}
+
+.pie-box {
+  height: 320px;
+}
+
 .emotion-summary {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 10px;
 }
+
 .summary-item {
   display: flex;
   align-items: center;
-  font-size: 13px;
+  gap: 10px;
+  color: #606266;
 }
+
 .dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  margin-right: 8px;
-  flex-shrink: 0;
+  flex: none;
 }
+
 .name {
   flex: 1;
-  color: #606266;
 }
+
 .count {
   color: #909399;
 }

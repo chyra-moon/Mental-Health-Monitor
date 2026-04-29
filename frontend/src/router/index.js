@@ -31,6 +31,7 @@ const routes = [
       { path: 'warnings', name: 'WarningList', component: () => import('@/views/admin/WarningView.vue') },
       { path: 'students', name: 'StudentList', component: () => import('@/views/admin/StudentsView.vue') },
       { path: 'records', name: 'AdminRecords', component: () => import('@/views/admin/RecordsView.vue') },
+      { path: 'video-analysis', name: 'AdminVideoAnalysis', component: () => import('@/views/admin/VideoAnalysisView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },

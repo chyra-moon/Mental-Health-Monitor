@@ -5,11 +5,12 @@
         <h2>学生列表</h2>
         <p>查看已注册学生账号</p>
       </div>
-      <el-button type="primary" @click="loadStudents">刷新</el-button>
+      <el-button :icon="RefreshRight" type="primary" @click="loadStudents" :loading="loading">刷新</el-button>
     </div>
 
-    <el-card>
-      <el-table v-loading="loading" :data="students" stripe>
+    <el-card shadow="never">
+      <el-empty v-if="!loading && students.length === 0" description="暂无学生数据" />
+      <el-table v-else v-loading="loading" :data="students" stripe>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" min-width="140" />
         <el-table-column prop="real_name" label="姓名" min-width="120" />
@@ -36,6 +37,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { RefreshRight } from '@element-plus/icons-vue'
 import http from '@/api/http'
 
 const loading = ref(false)
@@ -63,9 +65,11 @@ onMounted(loadStudents)
   justify-content: space-between;
   margin-bottom: 16px;
 }
+
 .page-header h2 {
   margin: 0 0 6px;
 }
+
 .page-header p {
   margin: 0;
   color: #909399;

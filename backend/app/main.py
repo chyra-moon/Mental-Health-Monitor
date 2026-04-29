@@ -3,7 +3,10 @@ from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+import app.models  # noqa: F401
+
 from app.config import settings
+from app.database import Base, engine
 
 app = FastAPI(title="Mental Health Monitor API")
 
@@ -49,7 +52,12 @@ def health_check():
     return {"code": 200, "message": "ok", "data": None}
 
 
-from app.routers import auth, emotion, questionnaire, warning, stats, records, users
+@app.on_event("startup")
+def ensure_database_tables():
+    Base.metadata.create_all(bind=engine)
+
+
+from app.routers import auth, emotion, questionnaire, warning, stats, records, users, admin_video_analysis
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(emotion.router, prefix="/api")
@@ -58,3 +66,4 @@ app.include_router(warning.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 app.include_router(records.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+app.include_router(admin_video_analysis.router, prefix="/api")

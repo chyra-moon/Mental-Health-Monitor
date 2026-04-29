@@ -10,9 +10,7 @@
           <el-input v-model="form.password" type="password" placeholder="密码" show-password />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" class="login-btn" @click="handleLogin" :loading="loading">
-            登 录
-          </el-button>
+          <el-button type="primary" class="login-btn" @click="handleLogin" :loading="loading">登录</el-button>
         </el-form-item>
       </el-form>
       <p class="register-link">
@@ -25,12 +23,11 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '@/api/http'
 
 const router = useRouter()
-const route = useRoute()
 const formRef = ref(null)
 const loading = ref(false)
 
@@ -47,6 +44,7 @@ const rules = {
 const handleLogin = async () => {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
+
   loading.value = true
   try {
     const res = await http.post('/auth/login', form)
@@ -69,6 +67,7 @@ const handleLogin = async () => {
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
+
 .login-card {
   width: 400px;
   padding: 40px;
@@ -76,15 +75,19 @@ const handleLogin = async () => {
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
+
 h1 {
   text-align: center;
   font-size: 22px;
   color: #333;
   margin-bottom: 32px;
+  letter-spacing: 0;
 }
+
 .login-btn {
   width: 100%;
 }
+
 .register-link {
   text-align: center;
   font-size: 14px;

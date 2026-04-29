@@ -13,9 +13,7 @@
           <el-input v-model="form.real_name" placeholder="姓名" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" class="login-btn" @click="handleRegister" :loading="loading">
-            注 册
-          </el-button>
+          <el-button type="primary" class="login-btn" @click="handleRegister" :loading="loading">注册</el-button>
         </el-form-item>
       </el-form>
       <p class="register-link">
@@ -46,7 +44,7 @@ const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码至少6位', trigger: 'blur' },
+    { min: 6, message: '密码至少 6 位', trigger: 'blur' },
   ],
   real_name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
 }
@@ -54,6 +52,7 @@ const rules = {
 const handleRegister = async () => {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
+
   loading.value = true
   try {
     await http.post('/auth/register', form)
@@ -73,6 +72,7 @@ const handleRegister = async () => {
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
+
 .login-card {
   width: 400px;
   padding: 40px;
@@ -80,15 +80,19 @@ const handleRegister = async () => {
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
+
 h1 {
   text-align: center;
   font-size: 22px;
   color: #333;
   margin-bottom: 32px;
+  letter-spacing: 0;
 }
+
 .login-btn {
   width: 100%;
 }
+
 .register-link {
   text-align: center;
   font-size: 14px;

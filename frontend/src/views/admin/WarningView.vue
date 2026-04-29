@@ -5,11 +5,12 @@
         <h2>风险预警</h2>
         <p>查看中高风险学生预警并标记处理状态</p>
       </div>
-      <el-button type="primary" @click="loadWarnings">刷新</el-button>
+      <el-button :icon="RefreshRight" type="primary" @click="loadWarnings" :loading="loading">刷新</el-button>
     </div>
 
-    <el-card>
-      <el-table v-loading="loading" :data="warnings" stripe>
+    <el-card shadow="never">
+      <el-empty v-if="!loading && warnings.length === 0" description="暂无风险预警" />
+      <el-table v-else v-loading="loading" :data="warnings" stripe>
         <el-table-column prop="created_at" label="预警时间" min-width="180">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
@@ -58,6 +59,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
+import { RefreshRight } from '@element-plus/icons-vue'
 import http from '@/api/http'
 
 const loading = ref(false)
@@ -114,13 +116,16 @@ onMounted(loadWarnings)
   justify-content: space-between;
   margin-bottom: 16px;
 }
+
 .page-header h2 {
   margin: 0 0 6px;
 }
+
 .page-header p {
   margin: 0;
   color: #909399;
 }
+
 .handled-time {
   color: #909399;
   font-size: 12px;

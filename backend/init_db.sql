@@ -74,3 +74,50 @@ CREATE TABLE IF NOT EXISTS intervention_suggestions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 管理员账号由后端初始化脚本创建，不在 SQL 中硬编码密码
+
+-- 视频分析会话表
+CREATE TABLE IF NOT EXISTS video_analysis_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    admin_id INT NOT NULL,
+    frame_interval_ms INT NOT NULL DEFAULT 1000,
+    status ENUM('running', 'completed', 'failed') NOT NULL DEFAULT 'running',
+    video_path TEXT DEFAULT NULL,
+    video_filename VARCHAR(255) DEFAULT NULL,
+    video_content_type VARCHAR(100) DEFAULT NULL,
+    total_frames INT NOT NULL DEFAULT 0,
+    analyzed_frames INT NOT NULL DEFAULT 0,
+    dominant_emotion VARCHAR(20) DEFAULT NULL,
+    average_emotion_scores JSON DEFAULT NULL,
+    emotion_distribution JSON DEFAULT NULL,
+    negative_ratio DECIMAL(5,4) DEFAULT NULL,
+    dominant_confidence DECIMAL(5,4) DEFAULT NULL,
+    risk_level ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'low',
+    reason TEXT DEFAULT NULL,
+    suggestion TEXT DEFAULT NULL,
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_video_student_id (student_id),
+    INDEX idx_video_admin_id (admin_id),
+    INDEX idx_video_status (status),
+    INDEX idx_video_started_at (started_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 视频帧情绪记录表
+CREATE TABLE IF NOT EXISTS video_frame_emotion_records (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id INT NOT NULL,
+    student_id INT NOT NULL,
+    frame_index INT NOT NULL,
+    timestamp_ms INT NOT NULL DEFAULT 0,
+    analysis_status ENUM('ok', 'no_face', 'error') NOT NULL DEFAULT 'ok',
+    dominant_emotion VARCHAR(20) DEFAULT NULL,
+    confidence DECIMAL(5,4) DEFAULT NULL,
+    emotion_scores JSON DEFAULT NULL,
+    error_message TEXT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_frame_session_id (session_id),
+    INDEX idx_frame_student_id (student_id),
+    INDEX idx_frame_session_index (session_id, frame_index)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

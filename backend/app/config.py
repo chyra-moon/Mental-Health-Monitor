@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     jwt_expire_hours: int = 24
     model_backend: str = "deepface"
     upload_dir: str = "./uploads/temp"
+    video_dir: str = "./vedio"
     cors_origins: str = "http://localhost:5173"
 
     model_config = {"env_file": ".env", "extra": "ignore"}

@@ -5,11 +5,12 @@
         <h2>识别记录</h2>
         <p>查看学生情绪识别历史</p>
       </div>
-      <el-button type="primary" @click="loadRecords">刷新</el-button>
+      <el-button :icon="RefreshRight" type="primary" @click="loadRecords" :loading="loading">刷新</el-button>
     </div>
 
-    <el-card>
-      <el-table v-loading="loading" :data="records" stripe>
+    <el-card shadow="never">
+      <el-empty v-if="!loading && records.length === 0" description="暂无识别记录" />
+      <el-table v-else v-loading="loading" :data="records" stripe>
         <el-table-column prop="created_at" label="识别时间" min-width="180">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
@@ -41,6 +42,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { RefreshRight } from '@element-plus/icons-vue'
 import http from '@/api/http'
 
 const loading = ref(false)
@@ -88,9 +90,11 @@ onMounted(loadRecords)
   justify-content: space-between;
   margin-bottom: 16px;
 }
+
 .page-header h2 {
   margin: 0 0 6px;
 }
+
 .page-header p {
   margin: 0;
   color: #909399;

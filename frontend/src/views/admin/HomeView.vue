@@ -5,7 +5,7 @@
         <h2>管理员首页</h2>
         <p>查看系统整体监测概况</p>
       </div>
-      <el-button type="primary" @click="loadData">刷新</el-button>
+      <el-button :icon="RefreshRight" @click="loadData" :loading="loading">刷新</el-button>
     </div>
 
     <el-row :gutter="16" class="overview-row">
@@ -29,9 +29,10 @@
       </el-col>
     </el-row>
 
-    <el-card>
+    <el-card shadow="never">
       <template #header>情绪分布</template>
-      <el-table v-loading="loading" :data="distribution" stripe>
+      <el-empty v-if="!distribution.length" description="暂无情绪分布数据" />
+      <el-table v-else v-loading="loading" :data="distribution" stripe>
         <el-table-column prop="emotion" label="情绪" min-width="120">
           <template #default="{ row }">{{ emotionLabel(row.emotion) }}</template>
         </el-table-column>
@@ -43,6 +44,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { RefreshRight } from '@element-plus/icons-vue'
 import http from '@/api/http'
 
 const loading = ref(false)
@@ -85,27 +87,34 @@ onMounted(loadData)
   justify-content: space-between;
   margin-bottom: 16px;
 }
+
 .page-header h2 {
   margin: 0 0 6px;
 }
+
 .page-header p {
   margin: 0;
   color: #909399;
 }
+
 .overview-row {
   margin-bottom: 16px;
 }
+
 .stat-card {
   text-align: center;
 }
+
 .stat-card.warning .stat-value {
   color: #e6a23c;
 }
+
 .stat-value {
   color: #409eff;
   font-size: 34px;
   font-weight: 700;
 }
+
 .stat-label {
   margin-top: 8px;
   color: #606266;

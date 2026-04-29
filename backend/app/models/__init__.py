@@ -1,4 +1,13 @@
 from app.models.user import User
 from app.models.record import EmotionRecord, QuestionnaireRecord, RiskWarning, InterventionSuggestion
+from app.models.video import VideoAnalysisSession, VideoFrameEmotionRecord
 
-__all__ = ["User", "EmotionRecord", "QuestionnaireRecord", "RiskWarning", "InterventionSuggestion"]
+__all__ = [
+    "User",
+    "EmotionRecord",
+    "QuestionnaireRecord",
+    "RiskWarning",
+    "InterventionSuggestion",
+    "VideoAnalysisSession",
+    "VideoFrameEmotionRecord",
+]

@@ -19,8 +19,7 @@
               :key="record.id"
               :timestamp="formatTime(record.created_at)"
             >
-              {{ emotionLabel(record.dominant_emotion) }}，
-              风险等级：{{ riskLabel(record.risk_level) }}
+              {{ emotionLabel(record.dominant_emotion) }}，风险等级：{{ riskLabel(record.risk_level) }}
             </el-timeline-item>
           </el-timeline>
         </el-card>
@@ -71,10 +70,7 @@ const riskMap = {
 }
 
 const loadData = async () => {
-  const [recordsRes, warningsRes] = await Promise.all([
-    http.get('/records/my'),
-    http.get('/warnings/my'),
-  ])
+  const [recordsRes, warningsRes] = await Promise.all([http.get('/records/my'), http.get('/warnings/my')])
   records.value = recordsRes.data || []
   warnings.value = warningsRes.data || []
 }
@@ -93,16 +89,20 @@ onMounted(loadData)
   justify-content: space-between;
   margin-bottom: 16px;
 }
+
 .page-header h2 {
   margin: 0 0 6px;
 }
+
 .page-header p {
   margin: 0;
   color: #909399;
 }
+
 .overview-row {
   margin-bottom: 16px;
 }
+
 .quick-card {
   min-height: 320px;
 }
