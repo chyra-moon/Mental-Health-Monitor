@@ -6,20 +6,28 @@ CREATE DATABASE IF NOT EXISTS mental_health
 
 USE mental_health;
 
+-- Classes table
+CREATE TABLE IF NOT EXISTS classes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    real_name VARCHAR(50) NOT NULL,
+    real_name VARCHAR(50) DEFAULT NULL,
     role ENUM('student', 'admin') NOT NULL DEFAULT 'student',
     gender VARCHAR(10) DEFAULT NULL,
-    class_name VARCHAR(50) DEFAULT NULL,
+    class_id INT DEFAULT NULL,
     status TINYINT NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_username (username),
-    INDEX idx_role (role)
+    INDEX idx_role (role),
+    INDEX idx_class_id (class_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 情绪识别记录表

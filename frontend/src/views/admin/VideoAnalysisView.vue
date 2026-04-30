@@ -345,6 +345,8 @@ let queuedUploads = []
 let uploadPromises = []
 
 const MAX_PARALLEL_UPLOADS = 2
+const VIDEO_PLAYBACK_RATE = 1
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // ========== 历史 ==========
 const historySessions = ref([])
@@ -513,7 +515,7 @@ async function handleStart(filename = null) {
     return
   }
 
-  await new Promise((r) => setTimeout(r, 1500))
+  await wait(1500)
 
   const vid = videoRef.value
   if (!vid || !streamSrc.value) { phase.value = 'idle'; return }
@@ -537,6 +539,8 @@ async function handleStart(filename = null) {
   try {
     await waitForVideoMetadata(vid)
     vid.pause()
+    vid.playbackRate = VIDEO_PLAYBACK_RATE
+    vid.currentTime = 0
   } catch (e) {
     phase.value = 'idle'
     ElMessage.error(e.message || '视频元数据加载失败')
@@ -549,7 +553,7 @@ async function handleStart(filename = null) {
   totalFrameCount = frameCount.value
   frameIndex = 0
   phase.value = 'playing'
-  await captureFramesBySeeking()
+  await captureFramesDuringPlayback()
   await finishSession()
 }
 
@@ -641,7 +645,7 @@ async function waitForVideoMetadata(vid) {
   })
 }
 
-async function captureFramesBySeeking() {
+async function captureFramesDuringPlayback() {
   const vid = videoRef.value
   if (!vid || !Number.isFinite(vid.duration) || vid.duration <= 0) {
     ElMessage.error('视频时长无效，无法抽帧')
@@ -649,12 +653,25 @@ async function captureFramesBySeeking() {
   }
 
   const total = frameCount.value
-  const safeDuration = Math.max(0, vid.duration - 0.05)
+  const intervalMs = (vid.duration * 1000) / total
+  vid.playbackRate = VIDEO_PLAYBACK_RATE
+
+  try {
+    await vid.play()
+  } catch (e) {
+    ElMessage.error('视频播放失败: ' + (e.message || '未知'))
+    return
+  }
+
+  const startedAt = performance.now()
   for (let idx = 0; idx < total; idx++) {
     if (phase.value !== 'playing') return
 
-    const targetTime = Math.min(safeDuration, ((idx + 0.5) * vid.duration) / total)
-    await seekVideo(vid, targetTime)
+    const targetElapsedMs = Math.min(vid.duration * 1000 - 50, (idx + 0.5) * intervalMs)
+    const delayMs = targetElapsedMs - (performance.now() - startedAt)
+    if (delayMs > 0) await wait(delayMs)
+    if (phase.value !== 'playing' || vid.ended) return
+    await waitForFrameReady(vid)
 
     const timestampMs = Math.round(vid.currentTime * 1000)
     try {
@@ -672,31 +689,7 @@ async function captureFramesBySeeking() {
     frameIndex = idx + 1
     await new Promise((resolve) => requestAnimationFrame(resolve))
   }
-}
-
-async function seekVideo(vid, targetTime) {
-  if (Math.abs(vid.currentTime - targetTime) < 0.03) {
-    await waitForFrameReady(vid)
-    return
-  }
-
-  await new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      cleanup()
-      resolve()
-    }, 3000)
-    const cleanup = () => {
-      clearTimeout(timeout)
-      vid.removeEventListener('seeked', onSeeked)
-    }
-    const onSeeked = () => {
-      cleanup()
-      resolve()
-    }
-    vid.addEventListener('seeked', onSeeked, { once: true })
-    vid.currentTime = targetTime
-  })
-  await waitForFrameReady(vid)
+  vid.pause()
 }
 
 async function waitForFrameReady(vid) {

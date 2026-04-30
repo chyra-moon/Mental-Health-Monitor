@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import inspect, text
 
 import app.models  # noqa: F401
 
@@ -55,8 +56,35 @@ def health_check():
 @app.on_event("startup")
 def ensure_database_tables():
     Base.metadata.create_all(bind=engine)
+    _apply_schema_compatibility()
     _init_default_data()
     _warm_up_models()
+
+
+def _apply_schema_compatibility():
+    """Keep older MySQL tables aligned with the current SQLAlchemy models."""
+    if engine.dialect.name not in {"mysql", "mariadb"}:
+        return
+
+    inspector = inspect(engine)
+    try:
+        user_columns = {column["name"]: column for column in inspector.get_columns("users")}
+    except Exception:
+        return
+
+    statements = []
+    real_name = user_columns.get("real_name")
+    if real_name and not real_name.get("nullable", True):
+        statements.append("ALTER TABLE users MODIFY COLUMN real_name VARCHAR(50) NULL")
+    if "class_id" not in user_columns:
+        statements.append("ALTER TABLE users ADD COLUMN class_id INT NULL AFTER gender")
+
+    if not statements:
+        return
+
+    with engine.begin() as conn:
+        for statement in statements:
+            conn.execute(text(statement))
 
 
 def _init_default_data():
