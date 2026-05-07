@@ -16,10 +16,7 @@
           <circle cx="18" cy="15" r="2.8" fill="white"/>
           <circle cx="18" cy="15" r="5" fill="white" opacity="0.12"/>
         </svg>
-        <div class="brand-titles">
-          <span>基于物联网数据分析的</span>
-          <strong>心理健康监测系统</strong>
-        </div>
+        <strong class="brand-name">基于物联网数据分析的心理健康监测系统</strong>
       </div>
       <div class="hero-copy">
         <h1>学生心理健康<br />监测与预警平台</h1>
@@ -176,25 +173,11 @@ const handleRegister = async () => {
   flex-shrink: 0;
 }
 
-.brand-titles {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.brand-titles span {
-  color: #8aa0c3;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 1px;
-}
-
-.brand-titles strong {
+.brand-name {
   color: #17315f;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 1.5px;
-  line-height: 1.3;
 }
 
 .hero-copy {
