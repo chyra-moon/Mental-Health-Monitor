@@ -1,25 +1,8 @@
 <template>
   <div class="auth-page">
     <section class="auth-hero">
-      <div class="brand-mark">
-        <svg class="brand-badge-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="bmBadge" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#2f7df6"/>
-              <stop offset="100%" stop-color="#35c6e8"/>
-            </linearGradient>
-          </defs>
-          <circle cx="20" cy="20" r="18" stroke="url(#bmBadge)" stroke-width="1.5" stroke-opacity="0.35" fill="none"/>
-          <circle cx="20" cy="20" r="15" fill="url(#bmBadge)"/>
-          <path d="M 9 20 L 14 20 L 16 20 L 18 15 L 20 27 L 22 20 L 28 20"
-                stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <circle cx="18" cy="15" r="2.8" fill="white"/>
-          <circle cx="18" cy="15" r="5" fill="white" opacity="0.12"/>
-        </svg>
-        <strong class="brand-name">基于物联网数据分析的心理健康监测系统</strong>
-      </div>
       <div class="hero-copy">
-        <h1>学生心理健康<br />监测与预警平台</h1>
+        <h1>基于物联网数据分析的<br />心理健康监测系统</h1>
         <p>面向校园场景的心理健康辅助监测系统，支撑学生、教师与管理员协同关注风险变化。</p>
       </div>
       <div class="capability-row">
@@ -156,32 +139,8 @@ const handleRegister = async () => {
   z-index: 1;
 }
 
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 20px;
-  border: 1px solid rgba(77, 130, 213, 0.14);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 8px 20px rgba(66, 110, 174, 0.08);
-}
-
-.brand-badge-icon {
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-}
-
-.brand-name {
-  color: #17315f;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-}
-
 .hero-copy {
-  margin-top: 54px;
+  margin-top: 0;
   max-width: 680px;
 }
 
