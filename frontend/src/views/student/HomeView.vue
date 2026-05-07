@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2>学生首页</h2>
-        <p>欢迎使用心理健康监测系统</p>
+        <p>欢迎使用基于物联网数据分析的心理健康监测系统</p>
       </div>
       <el-button type="primary" @click="router.push('/student/emotion')">开始识别</el-button>
     </div>

@@ -2,13 +2,7 @@
   <el-container class="layout-shell">
     <el-aside width="248px" class="aside-panel">
       <div class="brand">
-        <div class="brand-badge">
-          <el-icon><Connection /></el-icon>
-        </div>
-        <div class="brand-text">
-          <strong>学生心理监测系统</strong>
-          <span>Personal Health Space</span>
-        </div>
+        <AppLogo />
       </div>
 
       <el-menu class="side-menu" :default-active="route.path" router>
@@ -45,7 +39,7 @@
       <el-header class="topbar">
         <div class="topbar-left">
           <span>学生端</span>
-          <strong>个人心理健康监测空间</strong>
+          <strong>基于物联网数据分析的心理健康监测系统</strong>
         </div>
         <div class="topbar-right">
           <div class="status-pill">
@@ -66,9 +60,9 @@
 </template>
 
 <script setup>
+import AppLogo from '@/components/AppLogo.vue'
 import {
   Camera,
-  Connection,
   House,
   SwitchButton,
   Tickets,

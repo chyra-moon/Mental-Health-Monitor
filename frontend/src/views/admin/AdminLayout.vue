@@ -2,13 +2,7 @@
   <el-container class="layout-shell">
     <el-aside width="248px" class="aside-panel">
       <div class="brand">
-        <div class="brand-badge">
-          <el-icon><Connection /></el-icon>
-        </div>
-        <div class="brand-text">
-          <strong>心理健康监测系统</strong>
-          <span>IoT Mental Monitor</span>
-        </div>
+        <AppLogo />
       </div>
 
       <el-menu class="side-menu" :default-active="route.path" router>
@@ -49,7 +43,7 @@
       <el-header class="topbar">
         <div class="topbar-left">
           <span>管理员工作台</span>
-          <strong>基于物联网的学生心理监测系统</strong>
+          <strong>基于物联网数据分析的心理健康监测系统</strong>
         </div>
         <div class="topbar-right">
           <div class="status-pill">
@@ -70,8 +64,8 @@
 </template>
 
 <script setup>
+import AppLogo from '@/components/AppLogo.vue'
 import {
-  Connection,
   House,
   OfficeBuilding,
   SwitchButton,

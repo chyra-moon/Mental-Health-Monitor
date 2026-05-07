@@ -2,8 +2,24 @@
   <div class="auth-page">
     <section class="auth-hero">
       <div class="brand-mark">
-        <span class="brand-icon">M</span>
-        <span>心理健康监测系统</span>
+        <svg class="brand-badge-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="bmBadge" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#2f7df6"/>
+              <stop offset="100%" stop-color="#35c6e8"/>
+            </linearGradient>
+          </defs>
+          <circle cx="20" cy="20" r="18" stroke="url(#bmBadge)" stroke-width="1.5" stroke-opacity="0.35" fill="none"/>
+          <circle cx="20" cy="20" r="15" fill="url(#bmBadge)"/>
+          <path d="M 9 20 L 14 20 L 16 20 L 18 15 L 20 27 L 22 20 L 28 20"
+                stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="18" cy="15" r="2.8" fill="white"/>
+          <circle cx="18" cy="15" r="5" fill="white" opacity="0.12"/>
+        </svg>
+        <div class="brand-titles">
+          <span>基于物联网数据分析的</span>
+          <strong>心理健康监测系统</strong>
+        </div>
       </div>
       <div class="hero-copy">
         <h1>学生心理健康<br />监测与预警平台</h1>
@@ -146,24 +162,39 @@ const handleLogin = async () => {
 .brand-mark {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  color: #234371;
-  font-weight: 750;
-  padding: 10px 14px;
-  border: 1px solid rgba(77, 130, 213, 0.16);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 8px 18px rgba(66, 110, 174, 0.08);
+  gap: 16px;
+  padding: 14px 20px;
+  border: 1px solid rgba(77, 130, 213, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 20px rgba(66, 110, 174, 0.08);
 }
 
-.brand-icon {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  color: #fff;
-  background: linear-gradient(135deg, #2f7df6, #38c8df);
+.brand-badge-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+.brand-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.brand-titles span {
+  color: #8aa0c3;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+
+.brand-titles strong {
+  color: #17315f;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  line-height: 1.3;
 }
 
 .hero-copy {
