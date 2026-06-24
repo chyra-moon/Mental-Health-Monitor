@@ -1,73 +1,53 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <div>
-        <h2>情绪趋势分析</h2>
-        <p>查看情绪变化趋势和统计概况</p>
-      </div>
-      <el-radio-group v-model="days" size="small" @change="loadData">
-        <el-radio-button :label="7">近 7 天</el-radio-button>
-        <el-radio-button :label="30">近 30 天</el-radio-button>
-      </el-radio-group>
+  <div class="page trend-page">
+    <PageHeader
+      eyebrow="趋势分析"
+      title="情绪变化趋势"
+      description="按近 7 天或近 30 天查看情绪统计概况，帮助观察近期状态波动。"
+    >
+      <template #actions>
+        <el-radio-group v-model="days" size="small" @change="loadData">
+          <el-radio-button :label="7">近 7 天</el-radio-button>
+          <el-radio-button :label="30">近 30 天</el-radio-button>
+        </el-radio-group>
+      </template>
+    </PageHeader>
+
+    <div class="stats-grid">
+      <MetricCard label="总识别次数" :value="totalCount" unit="次" caption="所选时间范围内的记录总量" accent="teal" />
+      <MetricCard label="负面情绪占比" :value="negativePercent" unit="%" caption="悲伤、愤怒、恐惧、厌恶占比" accent="warm" />
+      <MetricCard label="预警数量" :value="warnCount" unit="条" caption="当前账号关联预警" :accent="warnCount > 0 ? 'danger' : 'green'" />
+      <MetricCard label="覆盖天数" :value="dayCount" unit="天" caption="有检测数据的日期数量" accent="sky" />
     </div>
 
-    <el-row :gutter="16" class="stat-row">
-      <el-col :span="6">
-        <el-card shadow="never" class="stat-card">
-          <div class="stat-value">{{ totalCount }}</div>
-          <div class="stat-label">总识别次数</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="never" class="stat-card">
-          <div class="stat-value negative">{{ negativePercent }}%</div>
-          <div class="stat-label">负面情绪占比</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="never" class="stat-card">
-          <div class="stat-value" :class="warnCount > 0 ? 'danger' : ''">{{ warnCount }}</div>
-          <div class="stat-label">预警数量</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="never" class="stat-card">
-          <div class="stat-value">{{ dayCount }}</div>
-          <div class="stat-label">覆盖天数</div>
-        </el-card>
-      </el-col>
-    </el-row>
+    <div class="trend-grid">
+      <ChartFrame title="情绪趋势" description="不同情绪在日期维度上的次数变化">
+        <div v-if="totalCount" ref="lineChartRef" class="chart-box large"></div>
+        <el-empty v-else description="暂无趋势数据" />
+      </ChartFrame>
 
-    <el-row :gutter="16">
-      <el-col :span="16">
-        <el-card shadow="never" class="chart-card">
-          <template #header>情绪趋势</template>
-          <div v-if="totalCount" ref="lineChartRef" class="chart-box"></div>
-          <el-empty v-else description="暂无趋势数据" />
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="never" class="chart-card">
-          <template #header>情绪分布</template>
-          <div v-if="totalCount" ref="pieChartRef" class="chart-box pie-box"></div>
-          <el-empty v-else description="暂无分布数据" />
-          <el-divider />
-          <div class="emotion-summary">
-            <div v-for="item in emotionRank" :key="item.emotion" class="summary-item">
-              <span class="dot" :style="{ background: emotionColor(item.emotion) }"></span>
-              <span class="name">{{ emotionLabel(item.emotion) }}</span>
-              <span class="count">{{ item.count }} 次</span>
-            </div>
+      <ChartFrame title="情绪分布" description="按识别次数排序展示情绪构成">
+        <div v-if="totalCount" ref="pieChartRef" class="chart-box pie-box"></div>
+        <el-empty v-else description="暂无分布数据" />
+        <div v-if="emotionRank.length" class="emotion-summary">
+          <div v-for="item in emotionRank" :key="item.emotion" class="summary-item">
+            <span class="dot" :style="{ background: emotionColor(item.emotion) }"></span>
+            <span class="name">{{ emotionLabel(item.emotion) }}</span>
+            <span class="count">{{ item.count }} 次</span>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </ChartFrame>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import * as echarts from 'echarts'
+import ChartFrame from '@/components/chart/ChartFrame.vue'
+import MetricCard from '@/components/common/MetricCard.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { emotionColor, emotionKeys, emotionLabel, negativeEmotions } from '@/utils/presentation'
 import http from '@/api/http'
 
 const days = ref(7)
@@ -81,21 +61,6 @@ const lineChartRef = ref(null)
 const pieChartRef = ref(null)
 let lineChart = null
 let pieChart = null
-
-const emotionConfig = {
-  happy: { label: '开心', color: '#67C23A' },
-  sad: { label: '悲伤', color: '#409EFF' },
-  angry: { label: '愤怒', color: '#F56C6C' },
-  fear: { label: '恐惧', color: '#E6A23C' },
-  disgust: { label: '厌恶', color: '#A0522D' },
-  surprise: { label: '惊讶', color: '#FF69B4' },
-  neutral: { label: '平静', color: '#909399' },
-}
-
-const negativeEmotions = ['sad', 'angry', 'fear', 'disgust']
-
-const emotionLabel = (value) => emotionConfig[value]?.label || value || '-'
-const emotionColor = (value) => emotionConfig[value]?.color || '#909399'
 
 async function loadData() {
   const [trendRes, warnRes] = await Promise.all([
@@ -132,16 +97,16 @@ async function loadData() {
     .sort((a, b) => b.count - a.count)
 
   const sortedDates = [...dateSet].sort()
-  const series = Object.keys(emotionConfig)
+  const series = emotionKeys
     .filter((emotion) => emotionGroups[emotion])
     .map((emotion) => ({
-      name: emotionConfig[emotion].label,
+      name: emotionLabel(emotion),
       type: 'line',
       smooth: true,
       symbol: 'circle',
       symbolSize: 6,
       lineStyle: { width: 2 },
-      itemStyle: { color: emotionConfig[emotion].color },
+      itemStyle: { color: emotionColor(emotion) },
       data: sortedDates.map((date) => emotionGroups[emotion]?.[date] || 0),
     }))
 
@@ -172,16 +137,19 @@ function renderLineChart(dates, series) {
     legend: {
       data: series.map((item) => item.name),
       bottom: 0,
+      textStyle: { color: '#6e817b' },
     },
-    grid: { left: 40, right: 20, top: 20, bottom: 50 },
+    grid: { left: 44, right: 20, top: 24, bottom: 54 },
     xAxis: {
       type: 'category',
       data: dates,
+      axisLabel: { color: '#6e817b' },
     },
     yAxis: {
       type: 'value',
       minInterval: 1,
       name: '次数',
+      axisLabel: { color: '#6e817b' },
     },
     series,
   })
@@ -205,7 +173,7 @@ function renderPieChart() {
     series: [
       {
         type: 'pie',
-        radius: ['40%', '70%'],
+        radius: ['42%', '70%'],
         center: ['50%', '45%'],
         data,
         label: { show: false },
@@ -238,73 +206,37 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+.trend-page {
+  display: grid;
+  gap: var(--mh-space-4);
 }
 
-.page-header h2 {
-  margin: 0 0 6px;
+.trend-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: var(--mh-space-4);
 }
 
-.page-header p {
-  margin: 0;
-  color: #909399;
-}
-
-.stat-row {
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  text-align: center;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #303133;
-}
-
-.stat-value.negative {
-  color: #e6a23c;
-}
-
-.stat-value.danger {
-  color: #f56c6c;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #909399;
-  margin-top: 4px;
-}
-
-.chart-card {
-  min-height: 480px;
-}
-
-.chart-box {
-  width: 100%;
-  height: 360px;
+.chart-box.large {
+  height: 380px;
 }
 
 .pie-box {
-  height: 320px;
+  height: 300px;
 }
 
 .emotion-summary {
   display: grid;
   gap: 10px;
+  padding-top: var(--mh-space-3);
+  border-top: 1px solid var(--mh-line);
 }
 
 .summary-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #606266;
+  color: var(--mh-text);
 }
 
 .dot {
@@ -319,6 +251,12 @@ onBeforeUnmount(() => {
 }
 
 .count {
-  color: #909399;
+  color: var(--mh-muted);
+}
+
+@media (max-width: 980px) {
+  .trend-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

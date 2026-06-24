@@ -1,67 +1,72 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <div>
-        <h2>历史记录</h2>
-        <p>查看最近 50 次识别与视频分析结果</p>
-      </div>
-      <el-button :icon="RefreshRight" type="primary" @click="loadRecords" :loading="loading">刷新</el-button>
-    </div>
+  <div class="page records-page">
+    <PageHeader
+      eyebrow="检测记录"
+      title="我的历史记录"
+      description="查看最近 50 次识别与视频分析结果，包含情绪、风险等级和补充信息。"
+    >
+      <template #actions>
+        <el-button :icon="RefreshRight" type="primary" @click="loadRecords" :loading="loading">刷新</el-button>
+      </template>
+    </PageHeader>
 
     <div v-if="records.length > 0" class="chart-grid">
-      <div class="chart-panel">
-        <div class="chart-title">情绪分布</div>
+      <ChartFrame title="情绪分布" description="不同情绪类别出现次数">
         <div ref="emotionChartRef" class="chart-box" />
-      </div>
-      <div class="chart-panel">
-        <div class="chart-title">风险分布</div>
+      </ChartFrame>
+      <ChartFrame title="风险分布" description="低、中、高风险记录数量">
         <div ref="riskChartRef" class="chart-box" />
-      </div>
-      <div class="chart-panel">
-        <div class="chart-title">趋势</div>
+      </ChartFrame>
+      <ChartFrame title="近期趋势" description="按日期汇总记录与风险信号">
         <div ref="trendChartRef" class="chart-box" />
-      </div>
+      </ChartFrame>
     </div>
 
-    <el-card class="records-card" shadow="never">
+    <section class="table-panel">
+      <div class="panel-title-row">
+        <div>
+          <h2>记录明细</h2>
+          <p>分页展示识别时间、来源、主要情绪和风险结果</p>
+        </div>
+      </div>
+
       <el-empty v-if="!loading && records.length === 0" description="暂无识别记录" />
-      <el-table v-else v-loading="loading" :data="pagedRecords" stripe style="width: 100%">
-        <el-table-column prop="created_at" label="识别时间" min-width="180">
-          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
-        </el-table-column>
-        <el-table-column label="类型" width="110" align="center">
-          <template #default="{ row }">
-            <el-tag :type="sourceType(row.source_type)" size="small">{{ sourceLabel(row) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="dominant_emotion" label="主要情绪" min-width="120">
-          <template #default="{ row }">
-            <el-tag :type="emotionType(row.dominant_emotion)">
-              {{ emotionLabel(row.dominant_emotion) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="confidence" label="置信度" min-width="120">
-          <template #default="{ row }">
-            {{ row.confidence == null ? '-' : `${(row.confidence * 100).toFixed(1)}%` }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="risk_level" label="风险等级" min-width="120">
-          <template #default="{ row }">
-            <el-tag :type="riskType(row.risk_level)">
-              {{ riskLabel(row.risk_level) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="补充信息" min-width="220">
-          <template #default="{ row }">
-            <span v-if="row.source_type === 'video'">
-              {{ row.analyzed_frames || 0 }} / {{ row.total_frames || 0 }} 帧，负面 {{ formatPercent(row.negative_ratio) }}
-            </span>
-            <span v-else class="text-muted">-</span>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div v-else class="table-scroll">
+        <el-table v-loading="loading" :data="pagedRecords" stripe style="width: 100%">
+          <el-table-column prop="created_at" label="识别时间" min-width="180">
+            <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+          </el-table-column>
+          <el-table-column label="类型" width="120" align="center">
+            <template #default="{ row }">
+              <StatusBadge :type="sourceBadgeType(row.source_type)" :label="sourceLabel(row)" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="dominant_emotion" label="主要情绪" min-width="120">
+            <template #default="{ row }">
+              <StatusBadge :type="emotionType(row.dominant_emotion)" :label="emotionLabel(row.dominant_emotion)" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="confidence" label="置信度" min-width="120">
+            <template #default="{ row }">
+              {{ row.confidence == null ? '-' : `${(row.confidence * 100).toFixed(1)}%` }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="risk_level" label="风险等级" min-width="120">
+            <template #default="{ row }">
+              <StatusBadge :type="row.risk_level" :label="riskLabel(row.risk_level)" />
+            </template>
+          </el-table-column>
+          <el-table-column label="补充信息" min-width="220">
+            <template #default="{ row }">
+              <span v-if="row.source_type === 'video'">
+                {{ row.analyzed_frames || 0 }} / {{ row.total_frames || 0 }} 帧，负面 {{ formatPercent(row.negative_ratio) }}
+              </span>
+              <span v-else class="text-muted">-</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
       <div v-if="records.length > pageSize" class="pagination-bar">
         <span class="page-total">共 {{ records.length }} 条记录</span>
         <el-pagination
@@ -73,7 +78,7 @@
           layout="sizes, prev, pager, next, jumper"
         />
       </div>
-    </el-card>
+    </section>
   </div>
 </template>
 
@@ -81,6 +86,24 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RefreshRight } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import ChartFrame from '@/components/chart/ChartFrame.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import {
+  countBy,
+  emotionColor,
+  emotionKeys,
+  emotionLabel,
+  emotionType,
+  formatPercent,
+  formatTime,
+  negativeEmotions,
+  riskColor,
+  riskKeys,
+  riskLabel,
+  sourceBadgeType,
+  sourceLabel,
+} from '@/utils/presentation'
 import http from '@/api/http'
 
 const loading = ref(false)
@@ -93,26 +116,6 @@ const trendChartRef = ref(null)
 let emotionChart = null
 let riskChart = null
 let trendChart = null
-
-const emotionMap = {
-  happy: { label: '开心', type: 'success', color: '#67c23a' },
-  sad: { label: '悲伤', type: 'primary', color: '#409eff' },
-  angry: { label: '愤怒', type: 'danger', color: '#f56c6c' },
-  fear: { label: '恐惧', type: 'warning', color: '#e6a23c' },
-  disgust: { label: '厌恶', type: 'warning', color: '#909399' },
-  surprise: { label: '惊讶', type: 'info', color: '#b37feb' },
-  neutral: { label: '平静', type: 'success', color: '#67c8b9' },
-}
-
-const riskMap = {
-  low: { label: '低风险', type: 'success', color: '#67c23a' },
-  medium: { label: '中风险', type: 'warning', color: '#e6a23c' },
-  high: { label: '高风险', type: 'danger', color: '#f56c6c' },
-}
-
-const emotionKeys = Object.keys(emotionMap)
-const riskKeys = ['low', 'medium', 'high']
-const negativeEmotions = ['sad', 'angry', 'fear', 'disgust']
 
 const emotionCounts = computed(() => countBy(records.value, 'dominant_emotion', emotionKeys))
 const riskCounts = computed(() => countBy(records.value, 'risk_level', riskKeys))
@@ -132,14 +135,6 @@ const loadRecords = async () => {
   } finally {
     loading.value = false
   }
-}
-
-function countBy(items, field, keys) {
-  const counts = Object.fromEntries(keys.map((key) => [key, 0]))
-  items.forEach((item) => {
-    if (counts[item[field]] !== undefined) counts[item[field]] += 1
-  })
-  return counts
 }
 
 function buildTrendData() {
@@ -168,45 +163,47 @@ function renderCharts() {
   if (!trendChart) trendChart = echarts.init(trendChartRef.value)
 
   emotionChart.setOption({
+    color: emotionKeys.map(emotionColor),
     tooltip: { trigger: 'item' },
     series: [{
       type: 'pie',
-      radius: ['45%', '72%'],
+      radius: ['48%', '72%'],
+      label: { color: '#3d524d' },
       data: emotionKeys
         .filter((key) => emotionCounts.value[key] > 0)
         .map((key) => ({
           name: emotionLabel(key),
           value: emotionCounts.value[key],
-          itemStyle: { color: emotionMap[key].color },
+          itemStyle: { color: emotionColor(key) },
         })),
     }],
   }, true)
 
   riskChart.setOption({
     tooltip: { trigger: 'axis' },
-    grid: { left: 32, right: 12, top: 20, bottom: 28 },
-    xAxis: { type: 'category', data: riskKeys.map(riskLabel) },
-    yAxis: { type: 'value', minInterval: 1 },
+    grid: { left: 36, right: 12, top: 18, bottom: 30 },
+    xAxis: { type: 'category', data: riskKeys.map(riskLabel), axisLabel: { color: '#6e817b' } },
+    yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#6e817b' } },
     series: [{
       type: 'bar',
       data: riskKeys.map((key) => ({
         value: riskCounts.value[key],
-        itemStyle: { color: riskMap[key].color },
+        itemStyle: { color: riskColor(key), borderRadius: [4, 4, 0, 0] },
       })),
-      barWidth: 28,
+      barWidth: 30,
     }],
   }, true)
 
   const trend = buildTrendData()
   trendChart.setOption({
     tooltip: { trigger: 'axis' },
-    legend: { data: ['记录数', '风险信号'], top: 0 },
-    grid: { left: 36, right: 12, top: 36, bottom: 28 },
-    xAxis: { type: 'category', data: trend.dates },
-    yAxis: { type: 'value', minInterval: 1 },
+    legend: { data: ['记录数', '风险信号'], top: 0, textStyle: { color: '#6e817b' } },
+    grid: { left: 40, right: 12, top: 38, bottom: 30 },
+    xAxis: { type: 'category', data: trend.dates, axisLabel: { color: '#6e817b' } },
+    yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#6e817b' } },
     series: [
-      { name: '记录数', type: 'line', smooth: true, data: trend.total, itemStyle: { color: '#409eff' } },
-      { name: '风险信号', type: 'line', smooth: true, data: trend.negative, itemStyle: { color: '#f56c6c' } },
+      { name: '记录数', type: 'line', smooth: true, data: trend.total, itemStyle: { color: '#337f95' } },
+      { name: '风险信号', type: 'line', smooth: true, data: trend.negative, itemStyle: { color: '#b95542' } },
     ],
   }, true)
 }
@@ -216,15 +213,6 @@ function resizeCharts() {
   riskChart?.resize()
   trendChart?.resize()
 }
-
-const formatTime = (value) => (value ? new Date(value).toLocaleString() : '-')
-const formatPercent = (value) => (value == null ? '-' : `${(value * 100).toFixed(1)}%`)
-const emotionLabel = (value) => emotionMap[value]?.label || value || '-'
-const emotionType = (value) => emotionMap[value]?.type || 'info'
-const riskLabel = (value) => riskMap[value]?.label || value || '-'
-const riskType = (value) => riskMap[value]?.type || 'info'
-const sourceLabel = (row) => row.source_label || (row.source_type === 'video' ? '视频分析' : '图片识别')
-const sourceType = (value) => (value === 'video' ? 'warning' : 'primary')
 
 onMounted(() => {
   loadRecords()
@@ -245,81 +233,8 @@ watch(pageSize, () => {
 </script>
 
 <style scoped>
-.page {
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.page-header h2 {
-  margin: 0 0 6px;
-}
-
-.page-header p {
-  margin: 0;
-  color: #909399;
-}
-
-.chart-grid {
+.records-page {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.chart-panel {
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-  background: #fff;
-  padding: 12px;
-}
-
-.chart-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 8px;
-}
-
-.chart-box {
-  height: 220px;
-}
-
-.records-card {
-  overflow: hidden;
-}
-
-.pagination-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 16px;
-  flex-wrap: wrap;
-}
-
-.page-total {
-  color: #7d8fb3;
-  font-size: 13px;
-}
-
-.text-muted {
-  color: #909399;
-}
-
-@media (max-width: 960px) {
-  .chart-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .pagination-bar {
-    justify-content: flex-end;
-  }
+  gap: var(--mh-space-4);
 }
 </style>

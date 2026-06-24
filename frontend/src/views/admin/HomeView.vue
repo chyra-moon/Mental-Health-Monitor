@@ -1,65 +1,67 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <div>
-        <h2>管理员首页</h2>
-        <p>查看系统整体监测概况</p>
-      </div>
-      <el-button :icon="RefreshRight" @click="loadData" :loading="loading">刷新</el-button>
+  <div class="page admin-home">
+    <PageHeader
+      eyebrow="管理首页"
+      title="基于物联网数据分析的心理健康监测系统概览"
+      description="集中查看学生规模、今日识别和待处理风险，辅助教师快速判断当前工作重点。"
+      tone="admin"
+    >
+      <template #actions>
+        <el-button :icon="RefreshRight" @click="loadData" :loading="loading">刷新</el-button>
+      </template>
+    </PageHeader>
+
+    <div class="stats-grid three">
+      <MetricCard label="学生总数" :value="overview.student_count ?? 0" unit="人" caption="已注册学生账号数量" accent="sky" />
+      <MetricCard label="今日识别次数" :value="overview.today_records ?? 0" unit="次" caption="当天产生的检测记录" accent="teal" />
+      <MetricCard label="待处理中高风险" :value="overview.pending_warnings ?? 0" unit="条" caption="需要教师跟进的预警" accent="danger" />
     </div>
 
-    <el-row :gutter="16" class="overview-row">
-      <el-col :span="8">
-        <el-card class="stat-card">
-          <div class="stat-value">{{ overview.student_count ?? 0 }}</div>
-          <div class="stat-label">学生总数</div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card class="stat-card">
-          <div class="stat-value">{{ overview.today_records ?? 0 }}</div>
-          <div class="stat-label">今日识别次数</div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card class="stat-card warning">
-          <div class="stat-value">{{ overview.pending_warnings ?? 0 }}</div>
-          <div class="stat-label">待处理中高风险</div>
-        </el-card>
-      </el-col>
-    </el-row>
+    <div class="dashboard-grid">
+      <ChartFrame title="情绪分布" description="全平台识别记录按情绪类别汇总">
+        <div v-if="distribution.length" ref="distributionChartRef" class="chart-box large"></div>
+        <el-empty v-else description="暂无情绪分布数据" />
+      </ChartFrame>
 
-    <el-card shadow="never">
-      <template #header>情绪分布</template>
-      <el-empty v-if="!distribution.length" description="暂无情绪分布数据" />
-      <el-table v-else v-loading="loading" :data="distribution" stripe>
-        <el-table-column prop="emotion" label="情绪" min-width="120">
-          <template #default="{ row }">{{ emotionLabel(row.emotion) }}</template>
-        </el-table-column>
-        <el-table-column prop="count" label="次数" min-width="120" />
-      </el-table>
-    </el-card>
+      <section class="business-panel">
+        <div class="panel-title-row">
+          <div>
+            <h2>分布明细</h2>
+            <p>用于核对图表中的情绪统计次数</p>
+          </div>
+        </div>
+        <el-empty v-if="!distribution.length" description="暂无情绪分布数据" />
+        <div v-else class="table-scroll">
+          <el-table v-loading="loading" :data="distribution" stripe>
+            <el-table-column prop="emotion" label="情绪" min-width="120">
+              <template #default="{ row }">
+                <StatusBadge :type="emotionType(row.emotion)" :label="emotionLabel(row.emotion)" />
+              </template>
+            </el-table-column>
+            <el-table-column prop="count" label="次数" min-width="120" />
+          </el-table>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RefreshRight } from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
+import ChartFrame from '@/components/chart/ChartFrame.vue'
+import MetricCard from '@/components/common/MetricCard.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import { emotionColor, emotionLabel, emotionType } from '@/utils/presentation'
 import http from '@/api/http'
 
 const loading = ref(false)
 const overview = ref({})
 const distribution = ref([])
-
-const emotionMap = {
-  happy: '开心',
-  sad: '悲伤',
-  angry: '愤怒',
-  fear: '恐惧',
-  disgust: '厌恶',
-  surprise: '惊讶',
-  neutral: '平静',
-}
+const distributionChartRef = ref(null)
+let distributionChart = null
 
 const loadData = async () => {
   loading.value = true
@@ -70,53 +72,56 @@ const loadData = async () => {
     ])
     overview.value = overviewRes.data || {}
     distribution.value = distributionRes.data || []
+    await nextTick()
+    renderDistribution()
   } finally {
     loading.value = false
   }
 }
 
-const emotionLabel = (value) => emotionMap[value] || value || '-'
+function renderDistribution() {
+  if (!distributionChartRef.value || !distribution.value.length) return
+  if (!distributionChart) distributionChart = echarts.init(distributionChartRef.value)
+  distributionChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} 次 ({d}%)' },
+    series: [
+      {
+        type: 'pie',
+        radius: ['45%', '72%'],
+        center: ['50%', '50%'],
+        label: { color: '#3d524d' },
+        data: distribution.value.map((item) => ({
+          name: emotionLabel(item.emotion),
+          value: item.count,
+          itemStyle: { color: emotionColor(item.emotion) },
+        })),
+      },
+    ],
+  }, true)
+}
 
-onMounted(loadData)
+function resizeChart() {
+  distributionChart?.resize()
+}
+
+onMounted(() => {
+  loadData()
+  window.addEventListener('resize', resizeChart)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', resizeChart)
+  distributionChart?.dispose()
+})
 </script>
 
 <style scoped>
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+.admin-home {
+  display: grid;
+  gap: var(--mh-space-4);
 }
 
-.page-header h2 {
-  margin: 0 0 6px;
-}
-
-.page-header p {
-  margin: 0;
-  color: #909399;
-}
-
-.overview-row {
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  text-align: center;
-}
-
-.stat-card.warning .stat-value {
-  color: #e6a23c;
-}
-
-.stat-value {
-  color: #409eff;
-  font-size: 34px;
-  font-weight: 700;
-}
-
-.stat-label {
-  margin-top: 8px;
-  color: #606266;
+.chart-box.large {
+  height: 360px;
 }
 </style>

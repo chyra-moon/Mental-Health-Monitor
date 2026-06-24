@@ -1,82 +1,101 @@
 <template>
-  <div class="emotion-page">
-    <div class="page-header">
-      <div>
-        <h2>情绪识别</h2>
-        <p>支持摄像头拍照和图片上传识别</p>
-      </div>
-    </div>
+  <div class="page emotion-page">
+    <PageHeader
+      eyebrow="情绪检测"
+      title="拍照或上传图片进行情绪识别"
+      description="检测结果会保存为历史记录，用于后续趋势分析和风险提醒。"
+    />
 
-    <el-radio-group v-model="mode" class="mode-switch">
-      <el-radio-button value="camera">摄像头拍照</el-radio-button>
-      <el-radio-button value="upload">图片上传</el-radio-button>
-    </el-radio-group>
+    <section class="detect-shell">
+      <div class="capture-panel">
+        <div class="mode-row">
+          <el-radio-group v-model="mode">
+            <el-radio-button value="camera">摄像头拍照</el-radio-button>
+            <el-radio-button value="upload">图片上传</el-radio-button>
+          </el-radio-group>
+        </div>
 
-    <div v-if="mode === 'camera'" class="mode-panel">
-      <div class="video-wrapper">
-        <video ref="videoRef" autoplay playsinline muted></video>
-        <div v-if="!cameraReady" class="camera-placeholder">正在启动摄像头...</div>
-      </div>
-      <div class="btn-row">
-        <el-button type="primary" :icon="Camera" :disabled="!cameraReady" @click="capturePhoto">拍照</el-button>
-        <el-button :icon="RefreshRight" :disabled="!capturedImage" @click="retake">重新拍照</el-button>
-      </div>
-      <img v-if="capturedImage" :src="capturedImage" class="preview-img" alt="拍照预览" />
-    </div>
-
-    <div v-else class="mode-panel">
-      <el-upload
-        drag
-        accept="image/jpeg,image/png,image/webp"
-        :auto-upload="false"
-        :show-file-list="false"
-        :on-change="handleFileChange"
-      >
-        <el-icon class="el-icon--upload" :size="48"><Plus /></el-icon>
-        <div class="el-upload__text">拖拽图片到此处或 <em>点击选择</em></div>
-        <template #tip>
-          <div class="el-upload__tip">支持 JPG / PNG / WEBP</div>
-        </template>
-      </el-upload>
-      <img v-if="previewUrl" :src="previewUrl" class="preview-img" alt="上传预览" />
-    </div>
-
-    <div class="btn-row">
-      <el-button type="primary" :loading="analyzing" :disabled="!canAnalyze" @click="analyzeImage">开始识别</el-button>
-      <el-button v-if="result" @click="resetAll">重新识别</el-button>
-    </div>
-
-    <div v-if="result" class="result-section">
-      <el-divider />
-      <h3>识别结果</h3>
-
-      <div class="result-grid">
-        <el-card class="result-card emotion-card" shadow="never">
-          <div class="emotion-label">{{ emotionLabel(result.dominant_emotion) }}</div>
-          <div class="confidence">置信度：{{ (result.confidence * 100).toFixed(1) }}%</div>
-        </el-card>
-
-        <el-card class="result-card risk-card" shadow="never">
-          <div class="risk-badge" :class="'risk-' + result.risk_level">
-            {{ riskLabel(result.risk_level) }}
+        <div v-if="mode === 'camera'" class="mode-panel">
+          <div class="video-wrapper">
+            <video ref="videoRef" autoplay playsinline muted></video>
+            <div v-if="!cameraReady" class="camera-placeholder">正在启动摄像头...</div>
           </div>
-          <p class="suggestion">{{ result.suggestion || '-' }}</p>
-        </el-card>
+          <div class="btn-row">
+            <el-button type="primary" :icon="Camera" :disabled="!cameraReady" @click="capturePhoto">拍照</el-button>
+            <el-button :icon="RefreshRight" :disabled="!capturedImage" @click="retake">重新拍照</el-button>
+          </div>
+          <img v-if="capturedImage" :src="capturedImage" class="preview-img" alt="拍照预览" />
+        </div>
+
+        <div v-else class="mode-panel upload-panel">
+          <el-upload
+            drag
+            accept="image/jpeg,image/png,image/webp"
+            :auto-upload="false"
+            :show-file-list="false"
+            :on-change="handleFileChange"
+          >
+            <el-icon class="el-icon--upload" :size="44"><Plus /></el-icon>
+            <div class="el-upload__text">拖拽图片到此处或 <em>点击选择</em></div>
+            <template #tip>
+              <div class="el-upload__tip">支持 JPG / PNG / WEBP</div>
+            </template>
+          </el-upload>
+          <img v-if="previewUrl" :src="previewUrl" class="preview-img" alt="上传预览" />
+        </div>
+
+        <div class="btn-row action-row">
+          <el-button type="primary" :loading="analyzing" :disabled="!canAnalyze" @click="analyzeImage">
+            开始识别
+          </el-button>
+          <el-button v-if="result" @click="resetAll">重新识别</el-button>
+        </div>
       </div>
 
-      <el-card class="scores-card" shadow="never">
-        <h4>情绪得分分布</h4>
+      <aside class="guide-panel">
+        <span>Detection Flow</span>
+        <h2>检测前确认</h2>
+        <ul>
+          <li>保持面部清晰，避免强逆光。</li>
+          <li>检测仅用于状态辅助观察。</li>
+          <li>结果会进入历史记录和趋势统计。</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section v-if="result" class="result-section">
+      <div class="result-grid">
+        <div class="business-panel result-card">
+          <span class="card-kicker">主导情绪</span>
+          <strong>{{ emotionLabel(result.dominant_emotion) }}</strong>
+          <p>置信度：{{ (result.confidence * 100).toFixed(1) }}%</p>
+        </div>
+
+        <div class="business-panel result-card risk-card">
+          <span class="card-kicker">风险判断</span>
+          <StatusBadge :type="result.risk_level" :label="riskLabel(result.risk_level)" />
+          <p>{{ result.suggestion || '-' }}</p>
+        </div>
+      </div>
+
+      <div class="business-panel scores-card">
+        <div class="panel-title-row">
+          <div>
+            <h2>情绪得分分布</h2>
+            <p>展示本次识别中各情绪类别的相对得分</p>
+          </div>
+        </div>
         <div v-for="(score, emotion) in result.emotion_scores" :key="emotion" class="score-row">
           <span class="score-label">{{ emotionLabel(emotion) }}</span>
           <el-progress
             :percentage="Number((score * 100).toFixed(1))"
-            :stroke-width="16"
+            :stroke-width="14"
             :color="barColor(emotion)"
             :format="() => `${(score * 100).toFixed(1)}%`"
           />
         </div>
-      </el-card>
-    </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -84,6 +103,9 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Camera, Plus, RefreshRight } from '@element-plus/icons-vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import { emotionColor as barColor, emotionLabel, riskLabel } from '@/utils/presentation'
 import http from '@/api/http'
 
 const mode = ref('camera')
@@ -97,30 +119,10 @@ const result = ref(null)
 
 let mediaStream = null
 
-const EMOTION_MAP = {
-  happy: { label: '开心', color: '#67c23a' },
-  sad: { label: '悲伤', color: '#409eff' },
-  angry: { label: '愤怒', color: '#f56c6c' },
-  fear: { label: '恐惧', color: '#e6a23c' },
-  disgust: { label: '厌恶', color: '#909399' },
-  surprise: { label: '惊讶', color: '#9c27b0' },
-  neutral: { label: '平静', color: '#67c23a' },
-}
-
-const RISK_MAP = {
-  low: '低风险',
-  medium: '中风险',
-  high: '高风险',
-}
-
 const canAnalyze = computed(() => {
   if (mode.value === 'camera') return !!capturedImage.value && !analyzing.value
   return !!selectedFile.value && !analyzing.value
 })
-
-const emotionLabel = (value) => EMOTION_MAP[value]?.label || value || '-'
-const barColor = (value) => EMOTION_MAP[value]?.color || '#909399'
-const riskLabel = (value) => RISK_MAP[value] || value || '-'
 
 async function startCamera() {
   if (mediaStream) return
@@ -259,161 +261,173 @@ onUnmounted(() => {
 
 <style scoped>
 .emotion-page {
-  max-width: 760px;
-  margin: 0 auto;
+  display: grid;
+  gap: var(--mh-space-4);
 }
 
-.page-header {
-  margin-bottom: 20px;
+.detect-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--mh-space-4);
+  align-items: start;
 }
 
-.page-header h2 {
-  margin: 0 0 6px;
+.capture-panel,
+.guide-panel {
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius);
+  background: var(--mh-surface);
+  box-shadow: var(--mh-shadow-soft);
 }
 
-.page-header p {
-  margin: 0;
-  color: #909399;
+.capture-panel {
+  padding: var(--mh-space-4);
 }
 
-.mode-switch {
+.mode-row {
   display: flex;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: var(--mh-space-4);
 }
 
 .mode-panel {
-  margin-bottom: 16px;
+  min-height: 260px;
 }
 
 .video-wrapper {
   position: relative;
-  width: 100%;
-  max-width: 520px;
-  min-height: 360px;
+  width: min(100%, 680px);
+  aspect-ratio: 4 / 3;
   margin: 0 auto;
-  border-radius: 8px;
   overflow: hidden;
-  background: #000;
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius);
+  background: #18211f;
 }
 
 .video-wrapper video {
   width: 100%;
   height: 100%;
   display: block;
+  object-fit: cover;
 }
 
 .camera-placeholder {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: #000;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #18211f;
+}
+
+.upload-panel :deep(.el-upload-dragger) {
+  min-height: 240px;
+  display: grid;
+  align-content: center;
+  border-radius: var(--mh-radius);
+  border-color: var(--mh-line-strong);
+  background: var(--mh-surface-soft);
 }
 
 .btn-row {
   display: flex;
-  gap: 12px;
+  gap: var(--mh-space-3);
   justify-content: center;
-  margin-top: 16px;
+  margin-top: var(--mh-space-4);
   flex-wrap: wrap;
+}
+
+.action-row {
+  padding-top: var(--mh-space-2);
+  border-top: 1px solid var(--mh-line);
 }
 
 .preview-img {
   display: block;
-  max-width: 360px;
-  width: 100%;
-  margin: 16px auto 0;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  max-width: min(380px, 100%);
+  margin: var(--mh-space-4) auto 0;
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius);
+}
+
+.guide-panel {
+  padding: var(--mh-space-5);
+}
+
+.guide-panel span,
+.card-kicker {
+  color: var(--mh-warm);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.guide-panel h2 {
+  margin: 10px 0 0;
+  color: var(--mh-ink);
+  font-size: 19px;
+}
+
+.guide-panel ul {
+  display: grid;
+  gap: 10px;
+  margin: var(--mh-space-4) 0 0;
+  padding: 0 0 0 18px;
+  color: var(--mh-text);
+  line-height: 1.7;
 }
 
 .result-section {
-  margin-top: 8px;
+  display: grid;
+  gap: var(--mh-space-4);
 }
 
 .result-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: var(--mh-space-4);
 }
 
-.result-card {
-  text-align: center;
+.result-card strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--mh-ink);
+  font-size: 28px;
 }
 
-.emotion-label {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 4px;
+.result-card p {
+  margin: 8px 0 0;
+  color: var(--mh-muted);
+  line-height: 1.7;
 }
 
-.confidence {
-  font-size: 14px;
-  color: #909399;
-}
-
-.risk-badge {
-  display: inline-block;
-  padding: 6px 20px;
-  border-radius: 20px;
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
-.risk-low {
-  background: #f0f9eb;
-  color: #67c23a;
-}
-
-.risk-medium {
-  background: #fdf6ec;
-  color: #e6a23c;
-}
-
-.risk-high {
-  background: #fef0f0;
-  color: #f56c6c;
-}
-
-.suggestion {
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.scores-card {
-  margin-top: 16px;
-}
-
-.scores-card h4 {
-  margin: 0 0 16px;
+.risk-card {
+  border-left: 5px solid var(--mh-warm);
 }
 
 .score-row {
   display: grid;
-  grid-template-columns: 80px minmax(0, 1fr);
+  grid-template-columns: 90px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: var(--mh-space-3);
   margin-bottom: 14px;
 }
 
 .score-label {
-  color: #606266;
+  color: var(--mh-text);
+  font-weight: 720;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
+  .detect-shell,
   .result-grid {
     grid-template-columns: 1fr;
   }
+}
 
-  .video-wrapper {
-    min-height: 260px;
+@media (max-width: 520px) {
+  .score-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

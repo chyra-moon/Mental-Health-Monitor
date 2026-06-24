@@ -1,38 +1,47 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <h2>个人信息</h2>
-      <p v-if="!locked">请填写以下信息以完成账号设置，保存后不可自行修改，如需更改请联系管理员</p>
-      <p v-else>信息已完善，如需修改请联系管理员</p>
-    </div>
+  <div class="page profile-page">
+    <PageHeader
+      eyebrow="学生资料"
+      title="完善个人信息"
+      :description="locked ? '信息已完善，如需修改请联系管理员。' : '请填写真实姓名、性别和班级，保存后不可自行修改。'"
+    />
 
-    <el-card class="profile-card" shadow="never">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px" style="max-width:480px" :disabled="locked">
-        <el-form-item label="用户名">
-          <el-input :model-value="user?.username" disabled />
-        </el-form-item>
-        <el-form-item label="姓名" prop="real_name">
-          <el-input v-model="form.real_name" placeholder="请输入真实姓名" :disabled="locked" />
-        </el-form-item>
-        <el-form-item label="性别" prop="gender">
-          <el-radio-group v-model="form.gender" :disabled="locked">
-            <el-radio value="男">男</el-radio>
-            <el-radio value="女">女</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="班级" prop="class_id">
-          <el-select v-model="form.class_id" placeholder="请选择班级" style="width:100%" :disabled="locked">
-            <el-option v-for="c in classes" :key="c.id" :label="c.name" :value="c.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="!locked">
-          <el-button type="primary" @click="handleSubmit" :loading="loading">保存</el-button>
-        </el-form-item>
-        <el-form-item v-else>
-          <el-tag type="success">信息已完善</el-tag>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <section class="profile-shell">
+      <aside class="profile-aside">
+        <span>Profile Setup</span>
+        <h2>{{ locked ? '资料已确认' : '首次使用前需完成资料确认' }}</h2>
+        <p>班级信息会用于管理端查看、预警归属和后续记录筛选，保存后沿用原有账号资料流程。</p>
+        <StatusBadge :type="locked ? 'handled' : 'pending'" :label="locked ? '已完善' : '待完善'" />
+      </aside>
+
+      <section class="business-panel form-panel">
+        <el-form ref="formRef" :model="form" :rules="rules" label-width="82px" :disabled="locked">
+          <el-form-item label="用户名">
+            <el-input :model-value="user?.username" disabled />
+          </el-form-item>
+          <el-form-item label="姓名" prop="real_name">
+            <el-input v-model="form.real_name" placeholder="请输入真实姓名" :disabled="locked" />
+          </el-form-item>
+          <el-form-item label="性别" prop="gender">
+            <el-radio-group v-model="form.gender" :disabled="locked">
+              <el-radio value="男">男</el-radio>
+              <el-radio value="女">女</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="班级" prop="class_id">
+            <el-select v-model="form.class_id" placeholder="请选择班级" style="width:100%" :disabled="locked">
+              <el-option v-for="c in classes" :key="c.id" :label="c.name" :value="c.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="!locked">
+            <el-button type="primary" @click="handleSubmit" :loading="loading">保存资料</el-button>
+          </el-form-item>
+          <el-form-item v-else>
+            <StatusBadge type="handled" label="信息已完善" />
+          </el-form-item>
+        </el-form>
+      </section>
+    </section>
   </div>
 </template>
 
@@ -40,6 +49,8 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import PageHeader from '@/components/common/PageHeader.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 import http from '@/api/http'
 
 const router = useRouter()
@@ -93,9 +104,51 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-.page { padding: 0; }
-.page-header { margin-bottom: 16px; }
-.page-header h2 { margin: 0 0 4px; font-size: 20px; color: #303133; }
-.page-header p { margin: 0; font-size: 13px; color: #909399; }
-.profile-card { max-width: 600px; }
+.profile-shell {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.42fr) minmax(360px, 0.58fr);
+  gap: var(--mh-space-4);
+  align-items: start;
+}
+
+.profile-aside {
+  padding: var(--mh-space-6);
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius);
+  background:
+    linear-gradient(180deg, var(--mh-primary-soft), #ffffff);
+  box-shadow: var(--mh-shadow-soft);
+}
+
+.profile-aside span {
+  color: var(--mh-warm);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.profile-aside h2 {
+  margin: 10px 0 0;
+  color: var(--mh-ink);
+  font-size: 20px;
+}
+
+.profile-aside p {
+  margin: 12px 0 18px;
+  color: var(--mh-text);
+  line-height: 1.8;
+}
+
+.form-panel {
+  max-width: 640px;
+}
+
+@media (max-width: 860px) {
+  .profile-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .form-panel {
+    max-width: none;
+  }
+}
 </style>

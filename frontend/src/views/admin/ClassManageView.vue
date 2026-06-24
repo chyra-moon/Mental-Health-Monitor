@@ -1,39 +1,49 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <div>
-        <h2>班级列表</h2>
-        <p>管理系统中的班级，删除班级前需确保班级内无学生</p>
+  <div class="page class-page">
+    <PageHeader
+      eyebrow="班级管理"
+      title="班级列表"
+      description="管理系统中的班级，删除班级前需确保班级内无学生。"
+      tone="admin"
+    >
+      <template #actions>
+        <el-button type="primary" @click="showAdd = true">新增班级</el-button>
+      </template>
+    </PageHeader>
+
+    <section class="table-panel">
+      <div class="panel-title-row">
+        <div>
+          <h2>班级数据</h2>
+          <p>班级名称、学生人数和创建时间</p>
+        </div>
       </div>
-      <el-button type="primary" @click="showAdd = true">新增班级</el-button>
-    </div>
+      <div class="table-scroll">
+        <el-table v-loading="loading" :data="classes" stripe>
+          <el-table-column prop="id" label="ID" width="80" align="center" />
+          <el-table-column prop="name" label="班级名称" min-width="200" />
+          <el-table-column prop="student_count" label="学生人数" width="120" align="center" />
+          <el-table-column prop="created_at" label="创建时间" width="200" />
+          <el-table-column label="操作" width="110" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-popconfirm
+                title="确认删除该班级？"
+                confirm-button-text="确认"
+                cancel-button-text="取消"
+                @confirm="handleDelete(row)"
+              >
+                <template #reference>
+                  <el-button type="danger" size="small" link :disabled="row.student_count > 0">
+                    删除
+                  </el-button>
+                </template>
+              </el-popconfirm>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </section>
 
-    <el-card shadow="never">
-      <el-table v-loading="loading" :data="classes" stripe>
-        <el-table-column prop="id" label="ID" width="80" align="center" />
-        <el-table-column prop="name" label="班级名称" min-width="200" />
-        <el-table-column prop="student_count" label="学生人数" width="120" align="center" />
-        <el-table-column prop="created_at" label="创建时间" width="200" />
-        <el-table-column label="操作" width="100" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-popconfirm
-              title="确认删除该班级？"
-              confirm-button-text="确认"
-              cancel-button-text="取消"
-              @confirm="handleDelete(row)"
-            >
-              <template #reference>
-                <el-button type="danger" size="small" link :disabled="row.student_count > 0">
-                  删除
-                </el-button>
-              </template>
-            </el-popconfirm>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-
-    <!-- 新增班级弹窗 -->
     <el-dialog v-model="showAdd" title="新增班级" width="400px">
       <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="0">
         <el-form-item prop="name">
@@ -51,6 +61,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import PageHeader from '@/components/common/PageHeader.vue'
 import http from '@/api/http'
 
 const loading = ref(false)
@@ -103,8 +114,8 @@ async function handleDelete(row) {
 </script>
 
 <style scoped>
-.page { padding: 0; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.page-header h2 { margin: 0 0 4px; font-size: 20px; color: #303133; }
-.page-header p { margin: 0; font-size: 13px; color: #909399; }
+.class-page {
+  display: grid;
+  gap: var(--mh-space-4);
+}
 </style>

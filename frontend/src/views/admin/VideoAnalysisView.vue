@@ -1,14 +1,20 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <div>
-        <h2>视频分析</h2>
-        <p>模拟摄像头采集视频，逐帧分析学生情绪变化并生成心理评估报告</p>
-      </div>
-    </div>
+  <div class="page video-page">
+    <PageHeader
+      eyebrow="视频分析"
+      title="视频采集与逐帧情绪分析"
+      description="模拟摄像头采集视频，逐帧分析学生情绪变化并生成心理评估报告。"
+      tone="admin"
+    />
 
     <!-- 控制栏 -->
-    <el-card class="control-card" shadow="never">
+    <section class="business-panel control-card">
+      <div class="panel-title-row">
+        <div>
+          <h2>采集对象与抽帧设置</h2>
+          <p>先选择班级和学生，再确认可用视频数据与抽帧数量</p>
+        </div>
+      </div>
       <el-row :gutter="16" align="middle">
         <el-col :span="5">
           <label class="control-label">班级</label>
@@ -48,10 +54,10 @@
           <div v-if="videoDuration > 0" class="video-info">视频时长: {{ videoDuration.toFixed(1) }}s &nbsp; 间隔: {{ captureIntervalMs }}ms</div>
         </el-col>
       </el-row>
-    </el-card>
+    </section>
 
     <!-- 摄像头模拟区 -->
-    <el-card class="camera-card" shadow="never">
+    <section class="camera-card">
       <div class="camera-box" ref="cameraBoxRef">
         <div v-if="phase === 'idle'" class="camera-placeholder">
           <el-button type="primary" size="large" :disabled="!canStart" @click="handleStart">
@@ -86,7 +92,7 @@
           <span class="dot"></span> REC
         </div>
       </div>
-    </el-card>
+    </section>
 
     <!-- 进度条 -->
     <div v-if="phase === 'playing' || phase === 'summarizing' || (phase === 'completed' && frameResults.length > 0)" class="progress-bar-area">
@@ -100,8 +106,14 @@
     </div>
 
     <!-- 实时分析表格 -->
-    <el-card v-if="frameResults.length > 0" class="table-card" shadow="never">
-      <template #header>逐帧分析结果</template>
+    <section v-if="frameResults.length > 0" class="table-panel table-card">
+      <div class="panel-title-row">
+        <div>
+          <h2>逐帧分析结果</h2>
+          <p>每一帧的识别状态、主导情绪、置信度和情绪分数分布</p>
+        </div>
+      </div>
+      <div class="table-scroll">
       <el-table :data="frameResults" stripe max-height="320" style="width:100%">
         <el-table-column prop="frame_index" label="帧序号" width="80" align="center" />
         <el-table-column label="时间戳" width="110">
@@ -142,17 +154,22 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </section>
 
     <!-- ECharts -->
-    <el-card v-if="frameResults.length > 0" class="chart-card" shadow="never">
-      <template #header>情绪变化曲线</template>
+    <ChartFrame v-if="frameResults.length > 0" class="chart-card" title="情绪变化曲线" description="按抽帧顺序展示各情绪置信度变化">
       <div ref="chartRef" class="chart-container" />
-    </el-card>
+    </ChartFrame>
 
     <!-- 汇总评估 -->
-    <el-card v-if="sessionSummary" class="summary-card" shadow="never">
-      <template #header>心理评估报告</template>
+    <section v-if="sessionSummary" class="business-panel summary-card">
+      <div class="panel-title-row">
+        <div>
+          <h2>心理评估报告</h2>
+          <p>基于本次有效帧汇总生成的主导情绪、负面占比和风险判断</p>
+        </div>
+      </div>
       <el-row :gutter="16">
         <el-col :span="8">
           <div class="stat-item">
@@ -184,16 +201,18 @@
         <p><strong>评估依据：</strong>{{ sessionSummary.reason }}</p>
         <p><strong>干预建议：</strong>{{ sessionSummary.suggestion }}</p>
       </div>
-    </el-card>
+    </section>
 
     <!-- 历史会话 -->
-    <el-card class="history-card" shadow="never">
-      <template #header>
-        <div class="history-header">
-          <span>历史会话</span>
-          <el-button size="small" @click="loadHistory" :loading="historyLoading">刷新</el-button>
+    <section class="table-panel history-card">
+      <div class="history-header">
+        <div>
+          <h2>历史会话</h2>
+          <p>查看历史采集留存文件、分析状态和风险结果</p>
         </div>
-      </template>
+          <el-button size="small" @click="loadHistory" :loading="historyLoading">刷新</el-button>
+      </div>
+      <div class="table-scroll">
       <el-table v-loading="historyLoading" :data="pagedHistorySessions" stripe style="width: 100%">
         <el-table-column prop="class_name" label="班级" width="100" align="center" />
         <el-table-column prop="student_name" label="学生" width="100" />
@@ -230,6 +249,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
       <div v-if="historySessions.length > historyPageSize" class="pagination-bar">
         <span class="page-total">共 {{ historySessions.length }} 条会话</span>
         <el-pagination
@@ -241,7 +261,7 @@
           layout="sizes, prev, pager, next, jumper"
         />
       </div>
-    </el-card>
+    </section>
 
     <!-- 详情弹窗 -->
     <el-dialog v-model="detailVisible" title="会话详情" width="900px" top="3vh">
@@ -291,21 +311,23 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
+import ChartFrame from '@/components/chart/ChartFrame.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import http from '@/api/http'
 
 const EMOTION_MAP = {
-  happy: { label: '开心', color: '#67c23a' },
-  sad: { label: '悲伤', color: '#409eff' },
-  angry: { label: '愤怒', color: '#f56c6c' },
-  fear: { label: '恐惧', color: '#e6a23c' },
-  disgust: { label: '厌恶', color: '#909399' },
-  surprise: { label: '惊讶', color: '#b37feb' },
-  neutral: { label: '平静', color: '#67c8b9' },
+  happy: { label: '开心', color: '#4f8f65' },
+  sad: { label: '悲伤', color: '#337f95' },
+  angry: { label: '愤怒', color: '#b95542' },
+  fear: { label: '恐惧', color: '#b8752b' },
+  disgust: { label: '厌恶', color: '#7c7268' },
+  surprise: { label: '惊讶', color: '#d4874a' },
+  neutral: { label: '平静', color: '#2f9a8d' },
 }
 const RISK_MAP = { low: '低风险', medium: '中风险', high: '高风险' }
 const RISK_TYPE = { low: 'success', medium: 'warning', high: 'danger' }
 const emotionLabel = (v) => EMOTION_MAP[v]?.label || v || '-'
-const barColor = (v) => EMOTION_MAP[v]?.color || '#909399'
+const barColor = (v) => EMOTION_MAP[v]?.color || '#7c8b86'
 const riskLabel = (v) => RISK_MAP[v] || v || '-'
 const riskType = (v) => RISK_TYPE[v] || 'info'
 
@@ -857,70 +879,225 @@ watch(historyPageSize, () => {
 </script>
 
 <style scoped>
-.page { max-width: 100%; overflow-x: hidden; padding: 0; }
-.page-header { margin-bottom: 16px; }
-.page-header h2 { margin: 0 0 4px; font-size: 20px; color: #303133; }
-.page-header p { margin: 0; font-size: 13px; color: #909399; }
-
-.control-card { margin-bottom: 16px; }
-.control-label { display: block; margin-bottom: 4px; font-size: 13px; color: #606266; }
-.check-status { padding-top: 4px; font-size: 13px; min-height: 32px; display: flex; align-items: center; }
-.text-success { color: #67c23a; }
-.text-warning { color: #e6a23c; }
-.text-muted { color: #909399; }
-.video-info { font-size: 12px; color: #909399; text-align: right; }
-.tr { text-align: right; }
-
-.camera-card { margin-bottom: 16px; }
-.camera-box {
-  position: relative; width: 100%; min-height: 360px;
-  background: #000; border-radius: 8px; overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
+.video-page {
+  display: grid;
+  gap: var(--mh-space-4);
 }
-.camera-placeholder {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff;
+
+.control-card {
+  border-left: 5px solid var(--mh-sky);
 }
-.camera-video { width: 100%; height: 100%; object-fit: contain; max-height: 480px; }
-.camera-complete-overlay {
-  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center;
-  color: #67c23a; font-size: 24px; font-weight: 700;
+
+.control-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--mh-text);
+  font-size: 13px;
+  font-weight: 760;
 }
-.recording-dot {
-  position: absolute; top: 12px; right: 16px;
-  display: flex; align-items: center; gap: 6px;
-  color: #f56c6c; font-size: 12px; font-weight: 600; letter-spacing: 1px;
-}
-.dot { width: 10px; height: 10px; border-radius: 50%; background: #f56c6c; animation: blink 1s infinite; }
-@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
 
-.progress-bar-area { margin-bottom: 16px; }
-.progress-text { font-size: 13px; color: #303133; }
-
-.table-card { margin-bottom: 16px; }
-.scores-bar { display: flex; height: 16px; border-radius: 3px; overflow: hidden; background: #f0f0f0; min-width: 200px; }
-.bar-segment { height: 100%; transition: width .3s; }
-
-.chart-card { margin-bottom: 16px; }
-.chart-container { width: 100%; height: 360px; }
-
-.summary-card { margin-bottom: 16px; }
-.stat-item { text-align: center; }
-.stat-label { font-size: 13px; color: #909399; margin-bottom: 8px; }
-.stat-value { font-size: 28px; font-weight: 700; }
-.text-danger { color: #f56c6c; }
-.text-success { color: #67c23a; }
-.reason-area p { margin: 8px 0; color: #606266; line-height: 1.8; }
-
-.history-card { margin-bottom: 16px; overflow: hidden; }
-.history-header { display: flex; justify-content: space-between; align-items: center; }
-.pagination-bar {
+.check-status {
+  min-height: 32px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 16px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  font-size: 13px;
 }
-.page-total { color: #7d8fb3; font-size: 13px; }
+
+.video-info {
+  margin-top: 4px;
+  color: var(--mh-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.tr {
+  text-align: right;
+}
+
+.camera-card {
+  padding: 10px;
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius);
+  background: #111b19;
+  box-shadow: var(--mh-shadow);
+}
+
+.camera-box {
+  position: relative;
+  width: 100%;
+  min-height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--mh-radius);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    #111b19;
+  background-size: 34px 34px, 34px 34px, auto;
+}
+
+.camera-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  max-height: 500px;
+  object-fit: contain;
+}
+
+.camera-complete-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 27, 25, 0.72);
+  color: #b7ead8;
+  font-size: 24px;
+  font-weight: 780;
+}
+
+.recording-dot {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffb0a3;
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--mh-danger);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.progress-bar-area {
+  padding: var(--mh-space-4);
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius);
+  background: var(--mh-surface);
+}
+
+.progress-text {
+  color: var(--mh-ink);
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.scores-bar {
+  display: flex;
+  min-width: 220px;
+  height: 16px;
+  overflow: hidden;
+  border: 1px solid var(--mh-line);
+  border-radius: 999px;
+  background: var(--mh-surface-soft);
+}
+
+.bar-segment {
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.chart-container {
+  width: 100%;
+  height: 360px;
+}
+
+.summary-card {
+  border-left: 5px solid var(--mh-warm);
+}
+
+.stat-item {
+  min-height: 110px;
+  display: grid;
+  place-items: center;
+  padding: var(--mh-space-4);
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius);
+  background: var(--mh-surface-soft);
+  text-align: center;
+}
+
+.stat-label {
+  margin-bottom: 8px;
+  color: var(--mh-muted);
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 780;
+}
+
+.reason-area p {
+  margin: 8px 0;
+  color: var(--mh-text);
+  line-height: 1.8;
+}
+
+.history-card {
+  overflow: hidden;
+}
+
+.history-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mh-space-3);
+  margin-bottom: var(--mh-space-4);
+}
+
+.history-header h2 {
+  margin: 0;
+  color: var(--mh-ink);
+  font-size: 16px;
+  font-weight: 760;
+}
+
+.history-header p {
+  margin: 4px 0 0;
+  color: var(--mh-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .check-status,
+  .video-info,
+  .tr {
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  .camera-box {
+    min-height: 260px;
+  }
+}
 </style>
