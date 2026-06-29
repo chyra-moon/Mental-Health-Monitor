@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { clearStoredSession, readStoredToken } from '@/stores/user'
 
 const http = axios.create({
   baseURL: '/api',
@@ -7,7 +8,7 @@ const http = axios.create({
 })
 
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = readStoredToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -18,8 +19,7 @@ http.interceptors.response.use(
   (res) => {
     const body = res.data
     if (body.code === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      clearStoredSession()
       window.location.href = '/login'
     }
     if (body.code !== 200) {

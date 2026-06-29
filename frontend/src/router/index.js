@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { readStoredToken, readStoredUser } from '@/stores/user'
 
 const routes = [
   {
@@ -16,11 +17,12 @@ const routes = [
     component: () => import('@/views/student/StudentLayout.vue'),
     meta: { role: 'student' },
     children: [
-      { path: '', name: 'StudentHome', component: () => import('@/views/student/HomeView.vue') },
+      { path: '', name: 'StudentWorkspace', component: () => import('@/views/student/HomeView.vue') },
       { path: 'profile', name: 'StudentProfile', component: () => import('@/views/student/ProfileEdit.vue') },
-      { path: 'emotion', name: 'EmotionDetect', component: () => import('@/views/student/EmotionView.vue') },
-      { path: 'records', name: 'StudentRecords', component: () => import('@/views/student/RecordsView.vue') },
-      { path: 'trend', name: 'StudentTrend', component: () => import('@/views/student/TrendView.vue') },
+      { path: 'emotion', name: 'StudentEmotionCheck', component: () => import('@/views/student/EmotionView.vue') },
+      { path: 'questionnaire', name: 'StudentQuestionnaire', component: () => import('@/views/student/QuestionnaireView.vue') },
+      { path: 'records', name: 'StudentEmotionRecords', component: () => import('@/views/student/RecordsView.vue') },
+      { path: 'trend', name: 'StudentTrendReview', component: () => import('@/views/student/TrendView.vue') },
     ],
   },
   {
@@ -28,12 +30,12 @@ const routes = [
     component: () => import('@/views/admin/AdminLayout.vue'),
     meta: { role: 'admin' },
     children: [
-      { path: '', name: 'AdminHome', component: () => import('@/views/admin/HomeView.vue') },
-      { path: 'classes', name: 'ClassManage', component: () => import('@/views/admin/ClassManageView.vue') },
-      { path: 'warnings', name: 'WarningList', component: () => import('@/views/admin/WarningView.vue') },
-      { path: 'students', name: 'StudentList', component: () => import('@/views/admin/StudentsView.vue') },
-      { path: 'records', name: 'AdminRecords', component: () => import('@/views/admin/RecordsView.vue') },
-      { path: 'video-analysis', name: 'AdminVideoAnalysis', component: () => import('@/views/admin/VideoAnalysisView.vue') },
+      { path: '', name: 'AdminRiskWorkspace', component: () => import('@/views/admin/HomeView.vue') },
+      { path: 'classes', name: 'AdminClassManagement', component: () => import('@/views/admin/ClassManageView.vue') },
+      { path: 'warnings', name: 'AdminWarningTriage', component: () => import('@/views/admin/WarningView.vue') },
+      { path: 'students', name: 'AdminStudentProfiles', component: () => import('@/views/admin/StudentsView.vue') },
+      { path: 'records', name: 'AdminEmotionRecords', component: () => import('@/views/admin/RecordsView.vue') },
+      { path: 'video-analysis', name: 'AdminVideoSessions', component: () => import('@/views/admin/VideoAnalysisView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },
@@ -45,8 +47,8 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const token = localStorage.getItem('token')
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const token = readStoredToken()
+  const user = readStoredUser() || {}
   if (to.path !== '/login' && to.path !== '/register' && !token) {
     return '/login'
   }
