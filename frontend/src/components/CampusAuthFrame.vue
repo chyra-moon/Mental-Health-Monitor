@@ -1,27 +1,34 @@
 <template>
-  <div class="auth-wrapper">
-    <div class="auth-mesh"></div>
-    <div class="auth-container">
-      <div class="auth-brand">
-        <div class="brand-logo">
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-        </div>
-        <h1 class="brand-title">{{ title }}</h1>
+  <main class="auth-shell">
+    <section class="auth-aside" aria-label="系统信息">
+      <div class="brand-mark">
+        <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.3">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 17h6l3-8 4 14 3-7h4" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 8h20M6 25h16" />
+        </svg>
       </div>
-      
+      <div class="brand-copy">
+        <p class="brand-kicker">Mental Health Monitor</p>
+        <h1 class="brand-title">{{ title }}</h1>
+        <p v-if="description" class="brand-desc">{{ description }}</p>
+      </div>
+      <div class="aside-footer">
+        <span>学生端</span>
+        <span>管理端</span>
+        <span>风险跟进</span>
+      </div>
+    </section>
+
+    <section class="auth-panel" :aria-labelledby="formTitleId">
       <div class="auth-card">
         <div class="card-header">
           <h2 :id="formTitleId" class="card-title">{{ formTitle }}</h2>
-          <p class="card-desc">{{ formDescription }}</p>
+          <p v-if="formDescription" class="card-desc">{{ formDescription }}</p>
         </div>
-        <div class="card-body">
-          <slot></slot>
-        </div>
+        <slot></slot>
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
 </template>
 
 <script setup>
@@ -58,137 +65,199 @@ defineProps({
 </script>
 
 <style scoped>
-.auth-wrapper {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.auth-shell {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.05fr) minmax(420px, 0.95fr);
   width: 100vw;
-  min-height: 100vh;
-  padding: 24px;
-  background-color: #f1f5f9; /* Simple clean light gray background */
-  overflow-x: hidden;
+  min-height: 100dvh;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0)),
+    var(--mh-bg);
   box-sizing: border-box;
 }
 
-.auth-mesh {
-  display: none; /* Removed heavy background mesh pattern */
-}
-
-.auth-container {
+.auth-aside {
   position: relative;
-  z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 100%;
-  max-width: 420px;
-  gap: 24px;
-  animation: fadeIn 0.4s ease-out forwards;
+  justify-content: space-between;
+  padding: clamp(40px, 6vw, 76px);
+  border-right: 1px solid var(--mh-line);
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fafafa 54%, #f4f4f5 100%);
+  overflow: hidden;
 }
 
-.auth-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: left;
+.auth-aside::after {
+  content: "";
+  position: absolute;
+  inset: auto -18% -18% auto;
+  width: 56%;
+  aspect-ratio: 1;
+  border: 1px solid var(--mh-line);
+  border-radius: 50%;
+  opacity: 0.7;
 }
 
-.brand-logo {
+.brand-mark {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--mh-primary);
-  color: #ffffff;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--mh-line);
+  border-radius: 12px;
+  background: var(--mh-surface);
+  color: var(--mh-ink);
+}
+
+.brand-copy {
+  max-width: 520px;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.brand-kicker {
+  margin: 0 0 14px;
+  color: var(--mh-muted);
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
 }
 
 .brand-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 800;
   color: var(--mh-ink);
+  font-size: clamp(34px, 4vw, 56px);
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.brand-desc {
+  max-width: 420px;
+  margin: 18px 0 0;
+  color: var(--mh-muted);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.aside-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.aside-footer span {
+  padding: 7px 10px;
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius-sm);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--mh-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.auth-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(28px, 5vw, 72px);
 }
 
 .auth-card {
   width: 100%;
-  padding: 32px;
-  background: #ffffff; /* Clean white card */
+  max-width: 420px;
+  padding: 36px;
+  background: #ffffff;
   border: 1px solid var(--mh-line);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  border-radius: 10px;
+  box-shadow: var(--mh-shadow);
   box-sizing: border-box;
 }
 
 .card-header {
-  margin-bottom: 24px;
-  text-align: center;
+  margin-bottom: 26px;
+  text-align: left;
 }
 
 .card-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--mh-ink);
 }
 
 .card-desc {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
   color: var(--mh-muted);
-  line-height: 1.5;
+  line-height: 1.7;
 }
 
-.card-body :deep(.el-form-item__label) {
+:deep(.el-form-item__label) {
   color: var(--mh-text) !important;
   font-weight: 700;
   font-size: 13px;
   margin-bottom: 4px;
 }
 
-.card-body :deep(.el-input__wrapper) {
+:deep(.el-input__wrapper) {
   background: #ffffff !important;
   border: 1px solid var(--mh-line) !important;
   box-shadow: none !important;
 }
 
-.card-body :deep(.el-input__inner) {
+:deep(.el-input__inner) {
   color: var(--mh-ink) !important;
-  height: 40px;
+  height: 42px;
 }
 
-.card-body :deep(.el-input__wrapper.is-focus) {
+:deep(.el-input__wrapper.is-focus) {
   border-color: var(--mh-primary) !important;
 }
 
-.card-body :deep(.el-button--primary) {
+:deep(.el-button--primary) {
   background: var(--mh-primary) !important;
   border: none !important;
-  height: 40px;
+  height: 42px;
   border-radius: var(--mh-radius-md) !important;
   font-weight: 700;
   box-shadow: none;
   width: 100%;
 }
 
-.card-body :deep(.el-button--primary:hover) {
+:deep(.el-button--primary:hover) {
   background: var(--mh-primary-strong) !important;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+@media (max-width: 920px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .auth-aside {
+    min-height: 230px;
+    padding: 28px;
+  }
+
+  .brand-copy {
+    margin: 28px 0;
+  }
+
+  .auth-panel {
+    align-items: flex-start;
+    padding: 24px;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 520px) {
+  .brand-title {
+    font-size: 30px;
+  }
+
   .auth-card {
     padding: 24px;
   }

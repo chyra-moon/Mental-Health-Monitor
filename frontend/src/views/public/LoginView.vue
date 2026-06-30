@@ -1,16 +1,16 @@
 <template>
   <CampusAuthFrame
     mode="login"
-    title="校园心理健康支持系统"
-    description="学生可查看个人记录和测评建议，心理中心人员可跟进风险预警、学生档案和视频会话。"
+    title="心理健康监测系统"
+    description="识别、测评、预警与档案集中管理。"
     form-title="账号登录"
-    form-description="请使用学校分配的账号登录。学生首次登录后需要先完善个人档案。"
+    form-description="输入账号和密码进入系统。"
     form-title-id="login-form-title"
     :context-items="contextItems"
   >
     <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleLogin">
       <el-form-item label="用户名" prop="username">
-        <el-input v-model.trim="form.username" autocomplete="username" placeholder="请输入学校账号" :disabled="loading" />
+        <el-input v-model.trim="form.username" autocomplete="username" placeholder="请输入账号" :disabled="loading" />
       </el-form-item>
       <el-form-item label="密码" prop="password">
         <el-input
@@ -47,8 +47,8 @@ const formRef = ref(null)
 const loading = ref(false)
 
 const contextItems = [
-  { label: '账号范围', text: '管理员账号由学校维护；学生可使用注册入口创建本人账号。' },
-  { label: '隐私用途', text: '识别、测评和预警数据仅用于校内心理健康支持和必要跟进。' },
+  { label: '账号范围', text: '学生可注册，管理员账号由学校维护。' },
+  { label: '数据用途', text: '数据仅用于校内支持。' },
 ]
 
 const form = reactive({

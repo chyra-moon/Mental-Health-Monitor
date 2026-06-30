@@ -48,25 +48,24 @@
         <div class="slider-tip">推荐抽帧 20 帧，可在 5-40 帧间调节</div>
       </el-form-item>
 
-      <!-- 视频检测提示 -->
       <div v-if="selectedStudentId" class="check-result-box">
         <el-alert
           v-if="checkResult === undefined"
-          title="检测中..."
+          title="正在准备..."
           type="info"
           :closable="false"
           show-icon
         />
         <el-alert
           v-else-if="checkResult && checkResult.available"
-          :title="`检测到视频文件：${checkResult.filename}`"
+          title="分析准备就绪"
           type="success"
           :closable="false"
           show-icon
         />
         <el-alert
           v-else
-          :title="checkResult?.hint || '该学生暂无可分析的会话视频'"
+          title="暂无可分析内容"
           type="warning"
           :closable="false"
           show-icon
@@ -133,6 +132,16 @@ const filteredStudents = computed(() => {
 <style scoped>
 .selector-card {
   height: 100%;
+  overflow: hidden;
+}
+
+.selector-card :deep(.el-card__body) {
+  height: calc(100% - 49px);
+  overflow: auto;
+}
+
+.selector-card :deep(.el-form-item) {
+  margin-bottom: 14px;
 }
 .card-title {
   font-weight: 700;
@@ -147,7 +156,7 @@ const filteredStudents = computed(() => {
   margin: 16px 0;
 }
 .action-box {
-  margin-top: 24px;
+  margin-top: 14px;
 }
 .start-btn {
   width: 100%;

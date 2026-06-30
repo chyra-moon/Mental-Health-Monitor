@@ -1,6 +1,6 @@
 <template>
   <div class="page student-workspace">
-    <PageHeader title="心理工作台" description="综合查看近期情绪识别状态、心理自测记录与校内干预跟进提醒">
+    <PageHeader title="心理工作台">
       <template #actions>
         <el-button :icon="Refresh" @click="loadData" :loading="loading">刷新工作台</el-button>
         <el-button type="primary" :icon="Document" @click="router.push('/student/questionnaire')">进行心理测评</el-button>
@@ -18,41 +18,52 @@
 
     <!-- Layer 1: Stat cards -->
     <div class="summary-grid" v-loading="loading">
-      <el-card class="summary-card" shadow="never">
-        <span class="card-label">最近识别情绪</span>
-        <strong class="card-value">{{ latestRecord ? emotionLabel(latestRecord.dominant_emotion) : '未记录' }}</strong>
-        <p class="card-desc">
-          {{
-            latestRecord
-              ? `${formatTime(latestRecord.created_at)} · ${riskLabel(latestRecord.risk_level)}`
-              : '建议每周至少采集一次情绪数据'
-          }}
-        </p>
-      </el-card>
-      
-      <el-card class="summary-card" shadow="never">
-        <span class="card-label">待跟进关注提醒</span>
-        <strong class="card-value" :class="latestWarning ? 'risk-' + latestWarning.level : 'risk-low'">
-          {{ latestWarning ? riskLabel(latestWarning.level) : '暂无待处理关注' }}
-        </strong>
-        <p class="card-desc">{{ latestWarningSummary }}</p>
-      </el-card>
-      
-      <el-card class="summary-card" shadow="never">
-        <span class="card-label">近 7 天累计评测</span>
-        <strong class="card-value">{{ totalTrendCount }} 次</strong>
-        <p class="card-desc">负向情绪频次占比 {{ negativePercent }}%，覆盖 {{ trendDayCount }} 天。</p>
-      </el-card>
+      <MetricCard
+        label="最近识别情绪"
+        :value="latestRecord ? emotionLabel(latestRecord.dominant_emotion) : '未记录'"
+        :note="latestRecord ? `${formatTime(latestRecord.created_at)} · ${riskLabel(latestRecord.risk_level)}` : '建议每周至少采集一次情绪数据'"
+        :tone="latestRecord ? latestRecord.risk_level : 'muted'"
+        icon="monitor"
+      />
+
+      <MetricCard
+        label="待跟进关注提醒"
+        :value="latestWarning ? riskLabel(latestWarning.level) : '暂无待处理关注'"
+        :note="latestWarningSummary"
+        :tone="latestWarning ? latestWarning.level : 'stable'"
+        icon="bell"
+      />
+
+      <MetricCard
+        label="近 7 天累计评测"
+        :value="totalTrendCount"
+        unit="次"
+        :note="`负向情绪频次占比 ${negativePercent}%，覆盖 ${trendDayCount} 天。`"
+        :tone="negativePercent >= 30 ? 'warning' : 'info'"
+        icon="trend"
+      />
     </div>
 
     <!-- Layer 2: Core Next Step Guidance -->
     <el-card class="next-step-card" shadow="never">
       <div class="next-step-box">
-        <div class="advice-content">
-          <el-icon class="advice-icon"><Opportunity /></el-icon>
-          <div class="advice-text">
-            <h5>下一步自测与调适建议：</h5>
-            <p>{{ nextStepMessage }}</p>
+        <div class="advice-main">
+          <div class="advice-heading">
+            <span class="advice-kicker">当前建议</span>
+            <span class="advice-state">近七天状态</span>
+          </div>
+          <p>{{ nextStepMessage }}</p>
+        </div>
+        <div class="mood-strip-wrap">
+          <span class="strip-title">状态概览</span>
+          <div class="mood-strip" aria-label="近七天状态概览">
+            <span
+              v-for="(bar, index) in moodBars"
+              :key="`${bar.date}-${index}`"
+              class="mood-bar"
+              :style="{ height: bar.height, background: bar.color }"
+              :title="bar.title"
+            ></span>
           </div>
         </div>
         <div class="next-actions">
@@ -104,7 +115,7 @@
         <el-empty v-if="warnings.length === 0" description="暂无关注提醒通知" />
         <div v-else class="warning-list">
           <article 
-            v-for="warning in warnings.slice(0, 3)" 
+            v-for="warning in warnings.slice(0, 4)" 
             :key="warning.id" 
             class="warning-item"
             @click="viewWarningDetail(warning)"
@@ -129,20 +140,9 @@
     >
       <div v-if="selectedRecord" class="detail-modal-body">
         <div class="modal-summary">
-          <div class="sum-cell">
-            <span>情绪类别</span>
-            <strong>{{ emotionLabel(selectedRecord.dominant_emotion) }}</strong>
-          </div>
-          <div class="sum-cell">
-            <span>置信度</span>
-            <strong>{{ formatPercent(selectedRecord.confidence) }}</strong>
-          </div>
-          <div class="sum-cell">
-            <span>评估风险</span>
-            <el-tag :type="riskType(selectedRecord.risk_level)">
-              {{ riskLabel(selectedRecord.risk_level) }}
-            </el-tag>
-          </div>
+          <MetricCard label="情绪类别" :value="emotionLabel(selectedRecord.dominant_emotion)" note="识别结果主类别" :tone="selectedRecord.risk_level || 'neutral'" icon="monitor" compact />
+          <MetricCard label="置信度" :value="formatPercent(selectedRecord.confidence)" note="模型输出可信度" tone="info" icon="data" compact />
+          <MetricCard label="评估风险" :value="riskLabel(selectedRecord.risk_level)" note="系统评估等级" :tone="selectedRecord.risk_level || 'neutral'" icon="warning" compact />
         </div>
 
         <el-descriptions :column="1" border class="modal-desc">
@@ -170,16 +170,8 @@
     >
       <div v-if="selectedWarning" class="detail-modal-body">
         <div class="modal-summary">
-          <div class="sum-cell">
-            <span>预警等级</span>
-            <el-tag :type="riskType(selectedWarning.level)" size="large" effect="dark">
-              {{ riskLabel(selectedWarning.level) }}
-            </el-tag>
-          </div>
-          <div class="sum-cell">
-            <span>跟进状态</span>
-            <strong>{{ warningStatusText(selectedWarning) }}</strong>
-          </div>
+          <MetricCard label="预警等级" :value="riskLabel(selectedWarning.level)" note="系统关注等级" :tone="selectedWarning.level || 'neutral'" icon="warning" compact />
+          <MetricCard label="跟进状态" :value="warningStatusText(selectedWarning)" note="线下处理进度" :tone="selectedWarning.status === 'handled' ? 'stable' : 'warning'" icon="bell" compact />
         </div>
 
         <el-descriptions :column="1" border class="modal-desc">
@@ -199,12 +191,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Refresh, Document, Opportunity } from '@element-plus/icons-vue'
+import { Refresh, Document } from '@element-plus/icons-vue'
+import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { listMyRecords } from '@/api/records'
 import { getStudentTrend } from '@/api/stats'
 import { listMyWarnings } from '@/api/warnings'
-import { NEGATIVE_EMOTIONS, emotionLabel, formatTime, riskLabel, riskType } from '@/domain/mentalHealth'
+import { NEGATIVE_EMOTIONS, emotionColor, emotionLabel, formatTime, riskLabel, riskType } from '@/domain/mentalHealth'
 
 const router = useRouter()
 const loading = ref(false)
@@ -238,6 +231,38 @@ const negativePercent = computed(() => {
   return Math.round((negativeTrendCount.value / totalTrendCount.value) * 100)
 })
 const trendDayCount = computed(() => new Set(trend.value.map((item) => item.date)).size)
+const moodBars = computed(() => {
+  const rows = new Map()
+  trend.value.forEach((item) => {
+    if (!rows.has(item.date)) {
+      rows.set(item.date, { date: item.date, total: 0, dominant: item.emotion, count: 0 })
+    }
+    const row = rows.get(item.date)
+    const count = Number(item.count || 0)
+    row.total += count
+    if (count >= row.count) {
+      row.count = count
+      row.dominant = item.emotion
+    }
+  })
+
+  const values = [...rows.values()].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-7)
+  if (!values.length) {
+    return Array.from({ length: 7 }, (_, index) => ({
+      date: `empty-${index}`,
+      height: `${18 + index * 3}px`,
+      color: 'var(--mh-line-strong)',
+      title: '暂无数据',
+    }))
+  }
+  const maxTotal = Math.max(1, ...values.map((item) => item.total))
+  return values.map((item) => ({
+    date: item.date,
+    height: `${Math.max(18, Math.round((item.total / maxTotal) * 52))}px`,
+    color: emotionColor(item.dominant),
+    title: `${item.date} · ${emotionLabel(item.dominant)} · ${item.total} 次`,
+  }))
+})
 
 const primaryAction = computed(() => {
   if (latestWarning.value?.level === 'high') return { label: '查看全部记录', path: '/student/records' }
@@ -311,7 +336,7 @@ onMounted(loadData)
 .student-workspace {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
 }
 
@@ -325,87 +350,115 @@ onMounted(loadData)
   gap: 12px;
 }
 
-.summary-card {
-  height: 112px;
-}
-
-.card-label {
-  display: block;
-  color: var(--mh-muted);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.card-value {
-  display: block;
-  margin-top: 6px;
-  color: var(--mh-ink);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.card-desc {
-  margin: 8px 0 0;
-  color: var(--mh-muted);
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-
-.risk-low {
-  color: var(--mh-success) !important;
-}
-
-.risk-medium {
-  color: var(--mh-warning) !important;
-}
-
-.risk-high {
-  color: var(--mh-danger) !important;
-}
-
 .next-step-card {
   background: var(--mh-surface) !important;
 }
 
+.next-step-card :deep(.el-card__body) {
+  padding: 16px 18px !important;
+}
+
 .next-step-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px 142px;
+  align-items: center;
+  gap: 18px;
+  min-height: 92px;
+}
+
+.advice-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 14px;
+  border-left: 3px solid var(--mh-accent);
+}
+
+.advice-heading {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 10px;
 }
 
-.advice-content {
-  display: flex;
-  align-items: start;
-  gap: 12px;
-}
-
-.advice-icon {
-  font-size: 22px;
-  color: var(--mh-primary);
-  margin-top: 2px;
-  flex: none;
-}
-
-.advice-text h5 {
-  margin: 0 0 4px;
-  font-size: 13.5px;
-  font-weight: 800;
+.advice-kicker {
   color: var(--mh-ink);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
-.advice-text p {
+.advice-state {
+  padding: 2px 7px;
+  color: var(--mh-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  border: 1px solid var(--mh-line);
+  border-radius: 5px;
+}
+
+.advice-main p {
   margin: 0;
-  font-size: 12.5px;
   color: var(--mh-text);
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.mood-strip-wrap {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 18px;
+  border-left: 1px solid var(--mh-line);
+  border-right: 1px solid var(--mh-line);
+}
+
+.strip-title {
+  color: var(--mh-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.mood-strip {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 7px;
+  height: 46px;
+}
+
+.mood-bar {
+  display: block;
+  width: 12px;
+  min-height: 18px;
+  border-radius: 999px 999px 4px 4px;
 }
 
 .next-actions {
   display: flex;
-  gap: 10px;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.next-actions .el-button {
+  width: 100%;
+  height: 34px;
+  margin-left: 0 !important;
+  border-radius: 6px !important;
+  font-size: 12.5px;
+}
+
+.next-actions .el-button:not(.el-button--primary) {
+  background: #ffffff !important;
+  border-color: var(--mh-line-strong) !important;
+  color: var(--mh-text);
 }
 
 .workspace-grid {
@@ -413,10 +466,18 @@ onMounted(loadData)
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   flex: 1;
+  min-height: 0;
 }
 
 .quick-panel {
-  height: 280px;
+  height: 100%;
+  min-height: 274px;
+  overflow: hidden;
+}
+
+.quick-panel :deep(.el-card__body) {
+  height: calc(100% - 49px);
+  overflow: hidden;
 }
 
 .section-title {
@@ -436,12 +497,15 @@ onMounted(loadData)
 }
 
 .record-list, .warning-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
   gap: 8px;
+  height: 100%;
+  min-height: 0;
 }
 
 .record-item, .warning-item {
+  min-height: 0;
   padding: 10px 12px;
   border: 1px solid var(--mh-line);
   border-radius: var(--mh-radius-md);
@@ -495,10 +559,11 @@ onMounted(loadData)
   margin: 0 0 6px;
   font-size: 12px;
   color: var(--mh-text);
-  line-height: 1.4;
-  white-space: nowrap;
+  line-height: 1.45;
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .warning-time {
@@ -515,31 +580,8 @@ onMounted(loadData)
 
 .modal-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  background: var(--mh-surface-muted);
-  border: 1px solid var(--mh-line);
-  border-radius: var(--mh-radius-md);
-  padding: 12px;
-  text-align: center;
-}
-
-.modal-summary .sum-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.modal-summary .sum-cell span {
-  font-size: 11px;
-  color: var(--mh-muted);
-  font-weight: 600;
-}
-
-.modal-summary .sum-cell strong {
-  font-size: 16px;
-  color: var(--mh-ink);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
 }
 
 .modal-desc {
@@ -575,11 +617,20 @@ onMounted(loadData)
     height: auto;
   }
   .next-step-box {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: stretch;
   }
+  .mood-strip-wrap {
+    padding: 0;
+    border: 0;
+  }
+  .mood-strip,
+  .strip-title {
+    justify-content: flex-start;
+    text-align: left;
+  }
   .next-actions {
-    justify-content: flex-end;
+    flex-direction: row;
   }
 }
 </style>

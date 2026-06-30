@@ -1,6 +1,6 @@
 <template>
   <div class="page class-manage-page">
-    <PageHeader title="班级管理" description="维护系统中的班级范围。注意：删除班级前必须确认班级内没有任何学生。">
+    <PageHeader title="班级管理">
       <template #actions>
         <el-button type="primary" @click="showAdd = true">新增班级</el-button>
       </template>
@@ -15,19 +15,25 @@
       :closable="false"
     />
 
+    <section class="class-summary" aria-label="班级管理摘要">
+      <MetricCard label="班级总数" :value="classes.length" unit="个" note="系统当前维护的班级" tone="info" icon="collection" compact />
+      <MetricCard label="学生总数" :value="totalStudentCount" unit="人" note="已分配到班级的学生" tone="neutral" icon="user" compact />
+      <MetricCard label="空班级" :value="emptyClassCount" unit="个" note="暂无学生归属的班级" :tone="emptyClassCount ? 'warning' : 'stable'" icon="folder" compact />
+    </section>
+
     <el-card class="class-table-card" shadow="never">
       <el-table
         v-loading="loading"
         :data="paginatedClasses"
         stripe
         size="small"
-        max-height="450"
+        max-height="360"
         class="class-table"
       >
-        <el-table-column prop="id" label="ID" width="90" align="center" />
-        <el-table-column prop="name" label="班级名称" min-width="220" />
-        <el-table-column prop="student_count" label="学生人数" width="130" align="center" />
-        <el-table-column prop="created_at" label="创建时间" min-width="180">
+        <el-table-column prop="id" label="ID" width="90" align="center" sortable />
+        <el-table-column prop="name" label="班级名称" min-width="220" sortable />
+        <el-table-column prop="student_count" label="学生人数" width="130" align="center" sortable />
+        <el-table-column prop="created_at" label="创建时间" min-width="180" sortable>
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="110" align="center" fixed="right">
@@ -78,6 +84,7 @@
 <script setup>
 import { reactive, onMounted, ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { createClass, deleteClass, listAdminClasses } from '@/api/classes'
 import { formatTime } from '@/domain/mentalHealth'
@@ -93,6 +100,9 @@ const addRules = { name: [{ required: true, message: '请输入班级名称', tr
 
 const currentPage = ref(1)
 const pageSize = ref(10)
+
+const totalStudentCount = computed(() => classes.value.reduce((sum, item) => sum + Number(item.student_count || 0), 0))
+const emptyClassCount = computed(() => classes.value.filter((item) => Number(item.student_count || 0) === 0).length)
 
 const paginatedClasses = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
@@ -149,7 +159,7 @@ async function handleDelete(row) {
 .class-manage-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
 }
 
@@ -161,6 +171,19 @@ async function handleDelete(row) {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+.class-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.class-table-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .class-table {

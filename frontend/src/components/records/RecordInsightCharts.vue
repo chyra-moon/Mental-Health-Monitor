@@ -13,6 +13,13 @@
       </template>
       <div ref="barRef" class="chart-box"></div>
     </el-card>
+
+    <el-card shadow="never" class="chart-card">
+      <template #header>
+        <div class="chart-title">近况识别趋势</div>
+      </template>
+      <div ref="lineRef" class="chart-box"></div>
+    </el-card>
   </div>
 </template>
 
@@ -30,9 +37,11 @@ const props = defineProps({
 
 const pieRef = ref(null)
 const barRef = ref(null)
+const lineRef = ref(null)
 
 const { render: renderPie, resize: resizePie } = useEcharts(pieRef)
 const { render: renderBar, resize: resizeBar } = useEcharts(barRef)
+const { render: renderLine, resize: resizeLine } = useEcharts(lineRef)
 
 function drawCharts() {
   if (!props.records.length) return
@@ -111,6 +120,38 @@ function drawCharts() {
       }
     ]
   })
+
+  const dateCounts = {}
+  props.records.forEach(r => {
+    if (!r.created_at) return
+    const date = String(r.created_at).slice(0, 10)
+    dateCounts[date] = (dateCounts[date] || 0) + 1
+  })
+  const dates = Object.keys(dateCounts).sort().slice(-7)
+  renderLine({
+    tooltip: { trigger: 'axis', formatter: '{b}: {c} 次' },
+    grid: { left: 34, right: 16, top: 20, bottom: 30 },
+    xAxis: {
+      type: 'category',
+      data: dates,
+      axisLabel: { fontSize: 10 }
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1
+    },
+    series: [
+      {
+        type: 'line',
+        smooth: true,
+        symbolSize: 7,
+        lineStyle: { width: 2, color: '#7c3aed' },
+        itemStyle: { color: '#7c3aed' },
+        areaStyle: { color: 'rgba(124, 58, 237, 0.08)' },
+        data: dates.map(date => dateCounts[date])
+      }
+    ]
+  })
 }
 
 watch(() => props.records, drawCharts, { deep: true })
@@ -127,19 +168,26 @@ onUnmounted(() => {
 function handleResize() {
   resizePie()
   resizeBar()
+  resizeLine()
 }
 </script>
 
 <style scoped>
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .chart-card {
-  height: 320px;
+  height: 220px;
+  overflow: hidden;
+}
+
+.chart-card :deep(.el-card__body) {
+  height: calc(100% - 49px);
+  overflow: hidden;
+  padding: 8px 12px 10px !important;
 }
 
 .chart-title {
@@ -149,13 +197,20 @@ function handleResize() {
 
 .chart-box {
   width: 100%;
-  height: 240px;
+  height: 100%;
+  min-height: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 980px) {
+  .charts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: auto;
+  }
+}
+
+@media (max-width: 640px) {
   .charts-grid {
     grid-template-columns: 1fr;
-    height: auto;
   }
 }
 </style>

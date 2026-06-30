@@ -1,9 +1,6 @@
 <template>
   <div class="page warning-workflow">
-    <PageHeader
-      title="预警处置"
-      description="追踪全校高风险心理信号及超时未处置的预警记录，核实后完成状态标记"
-    >
+    <PageHeader title="预警处置">
       <template #actions>
         <el-button :icon="RefreshRight" type="primary" @click="loadWarnings" :loading="loading">刷新</el-button>
       </template>
@@ -20,26 +17,10 @@
 
     <!-- Layer 1: Metrics stats -->
     <section class="triage-summary" v-loading="loading">
-      <el-card shadow="never" class="summary-card">
-        <span class="sum-label">待跟进预警数</span>
-        <strong class="sum-val">{{ pendingCount }}</strong>
-        <p class="sum-desc">需要线下干预确认并更新状态</p>
-      </el-card>
-      <el-card shadow="never" class="summary-card">
-        <span class="sum-label">重点关注高危数</span>
-        <strong class="sum-val risk-high">{{ highPendingCount }}</strong>
-        <p class="sum-desc">建议2小时内开启排查干预</p>
-      </el-card>
-      <el-card shadow="never" class="summary-card">
-        <span class="sum-label">超 24h 未处置</span>
-        <strong class="sum-val risk-medium">{{ overdueCount }}</strong>
-        <p class="sum-desc">超时未确认的系统风险记录</p>
-      </el-card>
-      <el-card shadow="never" class="summary-card">
-        <span class="sum-label">今日已完成跟进</span>
-        <strong class="sum-val">{{ handledTodayCount }}</strong>
-        <p class="sum-desc">表示今日更新状态的预警数量</p>
-      </el-card>
+      <MetricCard label="待跟进预警数" :value="pendingCount" unit="条" note="需要线下干预确认并更新状态" :tone="pendingCount ? 'warning' : 'stable'" icon="bell" />
+      <MetricCard label="重点关注高危数" :value="highPendingCount" unit="条" note="建议 2 小时内开启排查干预" :tone="highPendingCount ? 'danger' : 'stable'" icon="warning" />
+      <MetricCard label="超 24h 未处置" :value="overdueCount" unit="条" note="超时未确认的系统风险记录" :tone="overdueCount ? 'warning' : 'stable'" icon="alarm" />
+      <MetricCard label="今日已完成跟进" :value="handledTodayCount" unit="条" note="表示今日更新状态的预警数量" tone="info" icon="check" />
     </section>
 
     <!-- Layer 2: Fixed height table card with pagination -->
@@ -48,7 +29,7 @@
         <div class="table-toolbar">
           <div class="toolbar-left">
             <span class="card-title">预警信号列表</span>
-            <small class="card-desc">共 {{ filteredWarnings.length }} 条，按优先级高低进行推荐排序</small>
+            <small class="card-desc">共 {{ filteredWarnings.length }} 条</small>
           </div>
           <el-radio-group v-model="activeFilter" size="small" aria-label="筛选预警状态">
             <el-radio-button value="all">全部</el-radio-button>
@@ -64,7 +45,7 @@
         :data="paginatedWarnings" 
         stripe 
         size="small" 
-        max-height="350"
+        max-height="320"
         class="warnings-table"
       >
         <el-table-column label="处置优先级" min-width="130">
@@ -202,6 +183,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { RefreshRight } from '@element-plus/icons-vue'
+import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { listAdminWarnings, markWarningHandled } from '@/api/warnings'
 import { formatTime, riskLabel, riskType } from '@/domain/mentalHealth'
@@ -351,7 +333,7 @@ onMounted(loadWarnings)
 .warning-workflow {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
 }
 
@@ -365,45 +347,17 @@ onMounted(loadWarnings)
   gap: 12px;
 }
 
-.summary-card {
-  height: 112px;
-}
-
-.sum-label {
-  display: block;
-  color: var(--mh-muted);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.sum-val {
-  display: block;
-  margin-top: 6px;
-  color: var(--mh-ink);
-  font-size: 24px;
-  font-weight: 850;
-  line-height: 1.25;
-}
-
-.sum-desc {
-  margin: 8px 0 0;
-  color: var(--mh-muted);
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-
-.risk-high {
-  color: var(--mh-danger) !important;
-}
-
-.risk-medium {
-  color: var(--mh-warning) !important;
-}
-
 .warning-table-card {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+.warning-table-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .table-toolbar {
@@ -518,7 +472,7 @@ onMounted(loadWarnings)
 
 .suggestion-text {
   font-weight: 600;
-  color: var(--mh-primary-strong);
+  color: var(--mh-ink);
   border-color: var(--mh-primary-soft);
 }
 

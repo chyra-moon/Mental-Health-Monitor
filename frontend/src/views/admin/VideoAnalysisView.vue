@@ -1,33 +1,15 @@
 <template>
   <div class="page video-analysis-page">
     <PageHeader
-      eyebrow="留存视频复核"
-      title="视频会话工作台"
-      description="选择学生并对已留存的咨询对话视频进行自动抽帧人脸面部表情识别与情绪波动评估"
+      title="视频分析"
     />
 
     <!-- Block 1: Top overview statistics -->
     <section class="video-summary" v-loading="historyLoading" aria-label="视频会话概览">
-      <div class="summary-item">
-        <span>当前选择任务</span>
-        <strong :title="selectedStudentName">{{ selectedStudentName }}</strong>
-        <small>{{ selectedClassName }}</small>
-      </div>
-      <div class="summary-item">
-        <span>历史会话总数</span>
-        <strong>{{ historyStats.total }}</strong>
-        <small>已分析完成 {{ historyStats.completed }} 场</small>
-      </div>
-      <div class="summary-item is-risk">
-        <span>高危预警会话</span>
-        <strong>{{ historyStats.highRisk }}</strong>
-        <small>触发高风险跟进警报</small>
-      </div>
-      <div class="summary-item is-file">
-        <span>最近复核文件</span>
-        <strong :title="historyStats.latestFile">{{ historyStats.latestFile }}</strong>
-        <small>{{ historyStats.latestStudent }}</small>
-      </div>
+      <MetricCard label="当前对象" :value="selectedStudentName" :note="selectedClassName" tone="neutral" icon="user" compact />
+      <MetricCard label="分析记录总数" :value="historyStats.total" unit="场" :note="`已分析完成 ${historyStats.completed} 场`" tone="info" icon="video" compact />
+      <MetricCard label="高危预警会话" :value="historyStats.highRisk" unit="场" note="触发高风险跟进警报" :tone="historyStats.highRisk ? 'danger' : 'stable'" icon="warning" compact />
+      <MetricCard label="最近记录" :value="historyStats.latestFile" :note="historyStats.latestStudent" tone="neutral" icon="folder" compact />
     </section>
 
     <!-- Block 2: Middle control area (Form + Camera simulator) -->
@@ -78,7 +60,7 @@
     <!-- 抽帧分析运行中 + 分析结果生成子窗口 (Dialog) -->
     <el-dialog
       v-model="analysisDialogVisible"
-      title="会话视频评估报告（实时）"
+      title="视频分析报告"
       width="960px"
       :close-on-click-modal="phase !== 'running'"
       :show-close="phase !== 'running'"
@@ -122,6 +104,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import VideoAssessmentReport from '@/components/video-analysis/VideoAssessmentReport.vue'
 import VideoCapturePanel from '@/components/video-analysis/VideoCapturePanel.vue'
@@ -172,7 +155,7 @@ const historyStats = computed(() => {
     total: historySessions.value.length,
     completed: completed.length,
     highRisk: highRisk.length,
-    latestFile: latest?.video_filename || '无留存记录',
+    latestFile: latest ? '已生成报告' : '暂无记录',
     latestStudent: latest?.student_name ? `${latest.class_name || '未分班'} · ${latest.student_name}` : '暂无数据',
   }
 })
@@ -247,7 +230,7 @@ async function onStudentChange(value) {
     const res = await checkStudentVideo(value)
     checkResult.value = res.data
   } catch {
-    checkResult.value = { available: false, hint: '留存视频检测失败' }
+    checkResult.value = { available: false }
   }
 }
 
@@ -289,7 +272,7 @@ watch(historyPageSize, () => {
 .video-analysis-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
 }
 
@@ -299,70 +282,29 @@ watch(historyPageSize, () => {
   gap: 12px;
 }
 
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
-  gap: 4px;
-  padding: 12px 16px;
-  border: 1px solid var(--mh-line);
-  border-radius: var(--mh-radius-md);
-  background: var(--mh-surface);
-  height: 80px;
-}
-
-.summary-item span {
-  color: var(--mh-muted);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.summary-item strong {
-  overflow: hidden;
-  color: var(--mh-ink);
-  font-size: 18px;
-  font-weight: 850;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.summary-item small {
-  overflow: hidden;
-  color: var(--mh-muted);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.summary-item.is-risk strong {
-  color: var(--mh-danger);
-}
-
-.summary-item.is-file strong {
-  font-size: 14px;
-  line-height: 1.35;
-}
-
 .video-workbench {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
+  gap: 12px;
+  align-items: stretch;
+  height: 360px;
+  min-height: 0;
 }
 
+.selector-container,
 .camera-container {
   height: 100%;
+  min-height: 0;
 }
 
 .video-history-section {
   flex: 1;
+  min-height: 0;
 }
 
 /* Dialog run-time popup layout */
 .running-modal-body {
-  padding: 20px;
+  padding: 8px 0;
 }
 
 .result-modal-grid {
@@ -405,9 +347,6 @@ watch(historyPageSize, () => {
 @media (max-width: 800px) {
   .video-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .summary-item {
-    height: 76px;
   }
 }
 </style>

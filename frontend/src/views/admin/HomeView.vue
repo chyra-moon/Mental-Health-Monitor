@@ -1,6 +1,6 @@
 <template>
   <div class="page admin-risk-page">
-    <PageHeader title="风险工作台" description="综合研判校内高风险预警状态、各班级风险态势及心理会话波动特征">
+    <PageHeader title="工作台">
       <template #actions>
         <el-button :icon="RefreshRight" @click="loadData" :loading="loading">刷新</el-button>
         <el-button type="primary" @click="router.push('/admin/warnings')">进入预警处置</el-button>
@@ -18,11 +18,16 @@
 
     <!-- Layer 1: Stat cards -->
     <div class="triage-grid" v-loading="loading">
-      <el-card v-for="item in triageMetrics" :key="item.label" class="triage-card" shadow="never">
-        <span class="metric-label">{{ item.label }}</span>
-        <strong :class="'tone-' + item.tone">{{ item.value }}</strong>
-        <p>{{ item.detail }}</p>
-      </el-card>
+      <MetricCard
+        v-for="item in triageMetrics"
+        :key="item.label"
+        :label="item.label"
+        :value="item.value"
+        :unit="item.unit"
+        :note="item.detail"
+        :tone="item.tone"
+        :icon="item.icon"
+      />
     </div>
 
     <!-- Layer 2: Priority Queue and Class Risk (Fixed height boxes) -->
@@ -32,7 +37,7 @@
         <template #header>
           <div class="section-heading">
             <span>待处置优先级队列</span>
-            <small>优先展示高风险及超时未处理记录</small>
+            <small>高风险优先</small>
           </div>
         </template>
         <el-empty v-if="!priorityQueue.length" description="当前无待处置预警" />
@@ -64,7 +69,7 @@
         <template #header>
           <div class="section-heading">
             <span>班级风险态势分布</span>
-            <small>基于各班待处理风险记录聚合</small>
+            <small>待处理聚合</small>
           </div>
         </template>
         <el-empty v-if="!classRiskRows.length" description="暂无待关注班级" />
@@ -180,6 +185,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { getAdminEmotionDistribution, getAdminOverview, getAdminRiskTrend } from '@/api/stats'
 import { listAdminWarnings, markWarningHandled } from '@/api/warnings'
@@ -220,25 +226,32 @@ const triageMetrics = computed(() => [
   {
     label: '待处置风险预警',
     value: pendingWarnings.value.length,
+    unit: '条',
     tone: pendingWarnings.value.length ? 'warning' : 'stable',
+    icon: 'bell',
     detail: `高危预警 ${highPendingWarnings.value.length} 条 · 超时未决 ${overdueWarnings.value.length} 条`,
   },
   {
     label: '今日识别样本数',
     value: overview.value.today_records ?? 0,
+    unit: '次',
     tone: 'info',
+    icon: 'data',
     detail: `全校在册学生 ${overview.value.student_count ?? 0} 人`,
   },
   {
     label: '今日处理标记数',
     value: handledTodayCount.value,
+    unit: '条',
     tone: handledTodayCount.value ? 'stable' : 'muted',
+    icon: 'check',
     detail: '仅代表预警记录跟进完成',
   },
   {
     label: '全校负向情绪比',
     value: `${negativeEmotionPercent.value}%`,
     tone: negativeEmotionPercent.value >= 30 ? 'warning' : 'info',
+    icon: 'line',
     detail: '悲伤/愤怒/恐惧/厌恶样本占比',
   },
 ])
@@ -379,7 +392,7 @@ onMounted(loadData)
 .admin-risk-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
 }
 
@@ -393,58 +406,26 @@ onMounted(loadData)
   gap: 12px;
 }
 
-.triage-card {
-  height: 112px;
-}
-
-.metric-label {
-  display: block;
-  color: var(--mh-muted);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.triage-card strong {
-  display: block;
-  margin-top: 6px;
-  color: var(--mh-ink);
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.25;
-}
-
-.triage-card p {
-  margin: 8px 0 0;
-  color: var(--mh-muted);
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-
-.tone-warning {
-  color: var(--mh-warning) !important;
-}
-
-.tone-stable {
-  color: var(--mh-success) !important;
-}
-
-.tone-info {
-  color: var(--mh-info) !important;
-}
-
-.tone-muted {
-  color: var(--mh-muted) !important;
-}
-
 .command-grid, .insight-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.90fr);
-  gap: 16px;
+  gap: 12px;
   flex: 1;
+  min-height: 0;
 }
 
 .priority-panel, .class-panel, .trend-panel, .emotion-panel {
-  height: 280px;
+  height: 100%;
+  min-height: 220px;
+  overflow: hidden;
+}
+
+.priority-panel :deep(.el-card__body),
+.class-panel :deep(.el-card__body),
+.trend-panel :deep(.el-card__body),
+.emotion-panel :deep(.el-card__body) {
+  height: calc(100% - 49px);
+  overflow: auto;
 }
 
 .section-heading {
@@ -481,7 +462,6 @@ onMounted(loadData)
 .warning-item:hover {
   border-color: var(--mh-primary);
   background-color: var(--mh-primary-soft);
-  transform: translateY(-1px);
 }
 
 .warning-main {
@@ -608,7 +588,7 @@ onMounted(loadData)
 }
 .suggestion-text {
   font-weight: 600;
-  color: var(--mh-primary-strong);
+  color: var(--mh-ink);
   border-color: var(--mh-primary-soft);
 }
 

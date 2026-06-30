@@ -1,21 +1,21 @@
 export const EMOTION_KEYS = ['happy', 'sad', 'angry', 'fear', 'disgust', 'surprise', 'neutral'];
 
 export const EMOTION_META = {
-  happy: { label: '开心', color: '#10b981' },     // Green
-  sad: { label: '悲伤', color: '#3b82f6' },       // Blue
-  angry: { label: '愤怒', color: '#ef4444' },     // Red
-  fear: { label: '恐惧', color: '#8b5cf6' },      // Purple
-  disgust: { label: '厌恶', color: '#f59e0b' },    // Amber
-  surprise: { label: '惊讶', color: '#ec4899' },   // Pink
-  neutral: { label: '平静', color: '#64748b' }     // Slate
+  happy: { label: '开心', color: '#a16207' },
+  sad: { label: '悲伤', color: '#6d5a7a' },
+  angry: { label: '愤怒', color: '#dc2626' },
+  fear: { label: '恐惧', color: '#7c3aed' },
+  disgust: { label: '厌恶', color: '#b45309' },
+  surprise: { label: '惊讶', color: '#db2777' },
+  neutral: { label: '平静', color: '#71717a' }
 };
 
 export const NEGATIVE_EMOTIONS = new Set(['sad', 'angry', 'fear', 'disgust']);
 
 export const RISK_META = {
-  low: { label: '低风险', type: 'success', color: '#10b981' },
-  medium: { label: '中风险', type: 'warning', color: '#f59e0b' },
-  high: { label: '高风险', type: 'danger', color: '#ef4444' }
+  low: { label: '低风险', type: 'success', color: '#52525b' },
+  medium: { label: '中风险', type: 'warning', color: '#b45309' },
+  high: { label: '高风险', type: 'danger', color: '#dc2626' }
 };
 
 export function emotionLabel(emotion) {

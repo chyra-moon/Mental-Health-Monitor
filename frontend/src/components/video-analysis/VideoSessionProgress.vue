@@ -3,7 +3,7 @@
     <div class="progress-header">
       <span class="status-badge">
         <span class="pulse-dot"></span>
-        正在分析人脸帧表情数据...
+        正在生成分析报告...
       </span>
       <span class="count-text">{{ completedFrameCount }} / {{ frameCount }} 帧</span>
     </div>
@@ -39,19 +39,19 @@ const props = defineProps({
 const logEntries = computed(() => {
   const list = []
   if (props.completedFrameCount > 0) {
-    list.push('初始化视频抽帧解码器成功')
+    list.push('会话画面读取完成')
   }
   if (props.completedFrameCount >= Math.floor(props.frameCount * 0.25)) {
-    list.push('成功加载 MTCNN 人脸网格追踪模型')
+    list.push('面部状态识别中')
   }
   if (props.completedFrameCount >= Math.floor(props.frameCount * 0.5)) {
-    list.push('面部细微肌肉动作编码提取 (AUs) 完成')
+    list.push('情绪变化趋势生成中')
   }
   if (props.completedFrameCount >= Math.floor(props.frameCount * 0.75)) {
-    list.push('负向情绪权重与概率融合分析中')
+    list.push('风险等级复核中')
   }
   if (props.completedFrameCount === props.frameCount) {
-    list.push('抽帧会话序列结束，正在生成心理评估报告')
+    list.push('报告整理完成')
   }
   
   // 只返回最后两条日志，保持简洁
@@ -62,7 +62,7 @@ const logEntries = computed(() => {
 <style scoped>
 .progress-container {
   padding: 16px;
-  background: rgba(15, 23, 42, 0.03);
+  background: var(--mh-surface-muted);
   border: 1px solid var(--mh-line);
   border-radius: var(--mh-radius-md);
   margin-top: 12px;
@@ -89,7 +89,7 @@ const logEntries = computed(() => {
   height: 6px;
   border-radius: 50%;
   background-color: var(--mh-primary);
-  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.36);
   animation: pulse 1.2s infinite;
 }
 
@@ -115,7 +115,7 @@ const logEntries = computed(() => {
 }
 
 .log-entry.is-last {
-  color: var(--mh-primary);
+  color: var(--mh-ink);
   font-weight: 600;
   opacity: 1;
 }
@@ -127,15 +127,15 @@ const logEntries = computed(() => {
 @keyframes pulse {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+    box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.36);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+    box-shadow: 0 0 0 6px rgba(124, 58, 237, 0);
   }
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    box-shadow: 0 0 0 0 rgba(124, 58, 237, 0);
   }
 }
 </style>

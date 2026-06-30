@@ -13,24 +13,43 @@
     </div>
 
     <div class="metrics-grid">
-      <div class="metric-card">
-        <span class="metric-label">主导情绪</span>
-        <strong class="metric-value">{{ emotionLabel(sessionSummary.dominant_emotion) }}</strong>
-        <p class="metric-desc">置信度 {{ formatPercent(sessionSummary.dominant_confidence || sessionSummary.confidence) }}</p>
-      </div>
+      <MetricCard
+        label="主导情绪"
+        :value="emotionLabel(sessionSummary.dominant_emotion)"
+        :note="`置信度 ${formatPercent(sessionSummary.dominant_confidence || sessionSummary.confidence)}`"
+        :tone="sessionSummary.risk_level || 'neutral'"
+        icon="monitor"
+        compact
+      />
+      <MetricCard
+        label="负向情绪频次占比"
+        :value="formatPercent(sessionSummary.negative_ratio)"
+        note="超出 30% 触发风险关注"
+        :tone="sessionSummary.negative_ratio >= 0.3 ? 'danger' : 'info'"
+        icon="pie"
+        compact
+      />
+      <MetricCard
+        label="分析样本帧"
+        :value="sessionSummary.analyzed_frames"
+        unit="帧"
+        :note="`总设计帧数 ${sessionSummary.total_frames} 帧`"
+        tone="info"
+        icon="video"
+        compact
+      />
+    </div>
 
-      <div class="metric-card">
-        <span class="metric-label">负向情绪频次占比</span>
-        <strong class="metric-value" :class="{ 'is-negative': sessionSummary.negative_ratio >= 0.3 }">
-          {{ formatPercent(sessionSummary.negative_ratio) }}
-        </strong>
-        <p class="metric-desc">超出 30% 触发风险关注</p>
+    <div class="review-grid">
+      <div class="review-item">
+        <span>情绪稳定性</span>
+        <strong>{{ stabilityLabel(sessionSummary) }}</strong>
+        <p>{{ stabilityText(sessionSummary) }}</p>
       </div>
-
-      <div class="metric-card">
-        <span class="metric-label">分析样本帧</span>
-        <strong class="metric-value">{{ sessionSummary.analyzed_frames }} 帧</strong>
-        <p class="metric-desc">总设计帧数 {{ sessionSummary.total_frames }} 帧</p>
+      <div class="review-item">
+        <span>复核优先级</span>
+        <strong>{{ priorityLabel(sessionSummary) }}</strong>
+        <p>{{ priorityText(sessionSummary) }}</p>
       </div>
     </div>
 
@@ -51,6 +70,7 @@
 </template>
 
 <script setup>
+import MetricCard from '@/components/MetricCard.vue'
 import { emotionLabel, riskLabel, riskType } from '@/domain/mentalHealth'
 
 defineProps({
@@ -63,6 +83,30 @@ defineProps({
 const formatPercent = (val) => {
   if (val === undefined || val === null) return '-'
   return `${(Number(val) * 100).toFixed(1)}%`
+}
+
+function stabilityLabel(summary) {
+  if (summary.negative_ratio >= 0.45) return '波动明显'
+  if (summary.negative_ratio >= 0.25) return '轻度波动'
+  return '相对平稳'
+}
+
+function stabilityText(summary) {
+  if (summary.negative_ratio >= 0.45) return '负向情绪占比偏高，建议结合会谈记录复核。'
+  if (summary.negative_ratio >= 0.25) return '存在阶段性波动，可纳入近期观察。'
+  return '未见明显连续负向信号。'
+}
+
+function priorityLabel(summary) {
+  if (summary.risk_level === 'high') return '优先处理'
+  if (summary.risk_level === 'medium') return '建议跟进'
+  return '常规归档'
+}
+
+function priorityText(summary) {
+  if (summary.risk_level === 'high') return '建议尽快完成线下沟通并记录处置结果。'
+  if (summary.risk_level === 'medium') return '建议结合班级、测评和历史记录持续观察。'
+  return '保持常规记录即可。'
 }
 </script>
 
@@ -107,36 +151,38 @@ const formatPercent = (val) => {
   gap: 12px;
 }
 
-.metric-card {
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.review-item {
   padding: 12px;
-  background: var(--mh-surface-muted);
   border: 1px solid var(--mh-line);
   border-radius: var(--mh-radius-md);
+  background: var(--mh-surface);
 }
 
-.metric-label {
+.review-item span {
   display: block;
-  font-size: 12px;
   color: var(--mh-muted);
-  font-weight: 600;
-}
-
-.metric-value {
-  display: block;
-  font-size: 20px;
-  font-weight: 850;
-  color: var(--mh-ink);
-  margin-top: 6px;
-}
-
-.metric-value.is-negative {
-  color: var(--mh-danger);
-}
-
-.metric-desc {
-  margin: 4px 0 0;
   font-size: 11px;
-  color: var(--mh-muted);
+  font-weight: 650;
+}
+
+.review-item strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--mh-ink);
+  font-size: 16px;
+}
+
+.review-item p {
+  margin: 6px 0 0;
+  color: var(--mh-text);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .result-details {
@@ -165,7 +211,7 @@ const formatPercent = (val) => {
 
 .suggestion-text {
   font-weight: 600;
-  color: var(--mh-primary-strong);
+  color: var(--mh-ink);
 }
 
 .el-divider {
@@ -174,6 +220,10 @@ const formatPercent = (val) => {
 
 @media (max-width: 600px) {
   .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-grid {
     grid-template-columns: 1fr;
   }
 }

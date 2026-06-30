@@ -1,6 +1,6 @@
 <template>
   <div class="page questionnaire-page">
-    <PageHeader title="心理测评" description="自助心理状态测评工具；结果仅供校内自我调适和支持参考" />
+    <PageHeader title="心理测评" />
 
     <div class="main-layout" v-loading="pageLoading">
       <!-- Left side: Description & Start button -->
@@ -44,7 +44,7 @@
             </div>
           </template>
           
-          <el-table :data="historyRecords" stripe size="small" max-height="260" class="history-table">
+          <el-table :data="historyRecords" stripe size="small" class="history-table">
             <el-table-column prop="created_at" label="测评时间" min-width="160">
               <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
             </el-table-column>
@@ -70,6 +70,28 @@
       </div>
     </div>
 
+    <el-card class="assessment-panel" shadow="never">
+      <div class="panel-section score-section">
+        <span class="panel-label">最近状态</span>
+        <strong>{{ latestAssessmentText }}</strong>
+        <p>{{ latestAssessmentNote }}</p>
+      </div>
+      <div class="panel-section dimension-section">
+        <span class="panel-label">测评维度</span>
+        <div class="dimension-list">
+          <span v-for="item in assessmentDimensions" :key="item">{{ item }}</span>
+        </div>
+      </div>
+      <div class="panel-section range-section">
+        <span class="panel-label">关注区间</span>
+        <div class="range-bars" aria-label="心理测评关注区间">
+          <div class="range-item low"><span>低风险</span></div>
+          <div class="range-item medium"><span>中风险</span></div>
+          <div class="range-item high"><span>高风险</span></div>
+        </div>
+      </div>
+    </el-card>
+
     <!-- 答题子窗口 (Modal Dialog) -->
     <el-dialog
       v-model="quizVisible"
@@ -93,7 +115,7 @@
           <h4 class="question-text">{{ questions[currentStep].text }}</h4>
           
           <!-- Options -->
-          <el-radio-group v-model="answers[currentStep]" class="options-group">
+          <el-radio-group v-model="answers[currentStep]" class="options-group" @change="handleOptionSelect">
             <el-radio 
               v-for="opt in options" 
               :key="opt.value" 
@@ -118,7 +140,7 @@
           </el-button>
           <el-button 
             v-else 
-            type="success" 
+            type="primary" 
             :loading="submitting" 
             :disabled="answers[currentStep] === undefined" 
             @click="submitQuiz"
@@ -189,14 +211,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { getQuestions, submitAnswers } from '@/api/questionnaire'
-import { listMyWarnings } from '@/api/warnings'
 import { formatTime, riskLabel, riskType } from '@/domain/mentalHealth'
-import http from '@/api/http'
 
 const pageLoading = ref(false)
 const quizVisible = ref(false)
@@ -213,39 +233,24 @@ const historyRecords = ref([])
 const selectedRecord = ref(null)
 const detailVisible = ref(false)
 
+const assessmentDimensions = ['情绪波动', '睡眠质量', '压力负荷', '自我评价', '学习适应', '人际支持']
+const latestAssessment = computed(() => historyRecords.value[0] || null)
+const latestAssessmentText = computed(() => {
+  if (!latestAssessment.value) return '暂无测评记录'
+  return `${latestAssessment.value.total_score} 分 · ${riskLabel(latestAssessment.value.risk_level)}`
+})
+const latestAssessmentNote = computed(() => {
+  if (!latestAssessment.value) return '完成一次测评后，这里会显示最近一次测评结果。'
+  return `最近测评时间 ${formatTime(latestAssessment.value.created_at)}`
+})
+
 async function loadPageData() {
   pageLoading.value = true
   try {
-    // 1. Load history records from backend questionnaire api
-    // Wait, the questionnaire record history does not have a dedicated endpoint in questionnaire.py,
-    // but the warnings list contains SCL-90 or questionnaire triggers, or we can fetch list SCL-8 results.
-    // Let's check how warnings are generated. In questionnaire submit:
-    // It saves QuestionnaireRecord in database.
-    // Let's check if the backend /records/my returns questionnaire records?
-    // Wait, records.py's /my returns EmotionRecord and VideoAnalysisSession, but not QuestionnaireRecord!
-    // Wait, is there an endpoint in warning.py? `/warnings/my` returns RiskWarning (which are generated when risk_level is medium/high).
-    // Let's check if there is an endpoint to fetch questionnaire history.
-    // Oh, wait! Let's check `backend/app/routers/questionnaire.py`.
-    // It has `GET /questions` and `POST /submit`. But NO list history endpoint!
-    // Wait, let's see if we can query history from `records/my`? No, it's not there.
-    // Wait! Let's see if there is another endpoint or if we can make a direct call to backend, or if we can query it?
-    // Wait! Let's check if there is a table `questionnaire_records` in backend models.
-    // In `app/models/record.py`, let's see what is inside using `view_file` to see what fields `QuestionnaireRecord` has. Let's look!
-    // Ah, wait. Let's query `/warnings/my` to see if we can derive questionnaire details, or we can just fetch questionnaire records from warnings.
-    // Wait! Let's see if we can write a quick endpoint to query questionnaire records in the backend? Or wait, can we fetch history?
-    // Actually, in `questionnaire.py`, there is indeed no history endpoint. If we want, we can add a history endpoint or load SCL records.
-    // Wait, the instructions say "先不要去改任何代码，你先理解一下，然后总结出来...". The user approved the implementation plan, which didn't mention modifying backend code. But we can query it or mock the history, OR we can fetch from warnings.
-    // Wait! SCL-8 history can just be retrieved from the warnings or we can mock/load from localStorage if the backend doesn't have a history list!
-    // Wait, let's check if there is a history endpoint. Let's check `backend/app/routers/records.py` or `backend/app/routers/questionnaire.py` again.
-    // No, there is no list endpoint.
-    // Let's check if we can query it. Let's write a simple localStorage fallback for history records in case the backend doesn't support list query, so the UI is fully functional and beautiful! That is a very robust approach that ensures the page works perfectly.
-    
-    // Let's fetch questions first to verify API works
     const res = await getQuestions()
     questions.value = res.data.questions || []
     options.value = res.data.options || []
     
-    // Load history from localStorage (for student self-tracking)
     const localHistory = localStorage.getItem('questionnaire_history')
     if (localHistory) {
       historyRecords.value = JSON.parse(localHistory)
@@ -272,6 +277,16 @@ function prevQuestion() {
 
 function nextQuestion() {
   if (currentStep.value < questions.value.length - 1) currentStep.value++
+}
+
+function handleOptionSelect() {
+  if (currentStep.value < questions.value.length - 1) {
+    window.setTimeout(() => {
+      if (!showResult.value && currentStep.value < questions.value.length - 1) {
+        currentStep.value++
+      }
+    }, 140)
+  }
 }
 
 async function submitQuiz() {
@@ -329,20 +344,129 @@ onMounted(() => {
 
 <style scoped>
 .questionnaire-page {
-  display: grid;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   max-width: 100%;
+  height: 100%;
 }
 
 .main-layout {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.assessment-panel {
+  flex: 0 0 auto;
+}
+
+.assessment-panel :deep(.el-card__body) {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1.1fr;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
+  padding: 16px 18px !important;
+}
+
+.panel-section {
+  min-width: 0;
+  padding: 0 16px;
+  border-left: 1px solid var(--mh-line);
+}
+
+.panel-section:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.panel-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--mh-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.score-section strong {
+  display: block;
+  color: var(--mh-ink);
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.score-section p {
+  margin: 8px 0 0;
+  color: var(--mh-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dimension-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dimension-list span {
+  padding: 5px 8px;
+  color: var(--mh-text);
+  font-size: 12px;
+  font-weight: 650;
+  background: var(--mh-surface-muted);
+  border: 1px solid var(--mh-line);
+  border-radius: 5px;
+}
+
+.range-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  height: 34px;
+}
+
+.range-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  border: 1px solid var(--mh-line);
+}
+
+.range-item span {
+  font-size: 11.5px;
+  font-weight: 750;
+}
+
+.range-item.low {
+  color: var(--mh-ink);
+  background: var(--mh-primary-soft);
+}
+
+.range-item.medium {
+  color: var(--mh-warning);
+  background: var(--mh-warning-soft);
+}
+
+.range-item.high {
+  color: var(--mh-danger);
+  background: var(--mh-danger-soft);
 }
 
 .intro-card {
   height: 100%;
+}
+
+.intro-card :deep(.el-card__body) {
+  height: 100%;
+}
+
+.history-card :deep(.el-card__body) {
+  height: calc(100% - 49px);
 }
 
 .intro-header {
@@ -354,7 +478,7 @@ onMounted(() => {
 
 .intro-icon {
   font-size: 24px;
-  color: var(--mh-primary);
+  color: var(--mh-accent);
 }
 
 .intro-header h3 {
@@ -515,11 +639,11 @@ onMounted(() => {
   height: 80px;
   border-radius: 50%;
   background: var(--mh-primary-soft);
-  border: 2px solid var(--mh-primary);
+  border: 2px solid var(--mh-line-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--mh-primary-strong);
+  color: var(--mh-ink);
 }
 
 .score-num {
@@ -631,6 +755,18 @@ onMounted(() => {
 @media (max-width: 768px) {
   .main-layout {
     grid-template-columns: 1fr;
+  }
+  .assessment-panel :deep(.el-card__body) {
+    grid-template-columns: 1fr;
+  }
+  .panel-section {
+    padding: 12px 0 0;
+    border-top: 1px solid var(--mh-line);
+    border-left: 0;
+  }
+  .panel-section:first-child {
+    padding-top: 0;
+    border-top: 0;
   }
 }
 </style>

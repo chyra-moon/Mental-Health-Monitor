@@ -1,6 +1,6 @@
 <template>
   <div class="page emotion-page">
-    <PageHeader title="情绪识别" description="允许摄像头在线拍照或直接上传人脸图片进行即时情绪识别分析" />
+    <PageHeader title="情绪识别" />
 
     <el-alert
       v-if="cameraError"
@@ -53,15 +53,18 @@
               :auto-upload="false"
               :show-file-list="false"
               :on-change="handleFileChange"
-              class="upload-drag-area"
+              class="upload-frame"
             >
-              <el-icon class="el-icon--upload" :size="48"><Plus /></el-icon>
-              <div class="el-upload__text">拖拽图片到此处或 <em>点击选择</em></div>
-              <template #tip>
-                <div class="el-upload__tip">支持 JPG / PNG / WEBP 格式</div>
-              </template>
+              <div class="upload-frame-content" :class="{ 'is-filled': previewUrl }">
+                <img v-if="previewUrl" :src="previewUrl" class="preview-img" alt="上传预览" />
+                <div v-else class="upload-empty-state">
+                  <el-icon class="el-icon--upload" :size="42"><Plus /></el-icon>
+                  <strong>选择待识别图片</strong>
+                  <span>支持 JPG / PNG / WEBP</span>
+                </div>
+                <div v-if="previewUrl" class="upload-change-hint">点击或拖拽可更换图片</div>
+              </div>
             </el-upload>
-            <img v-if="previewUrl" :src="previewUrl" class="preview-img" alt="上传预览" />
           </div>
 
           <!-- Start Action -->
@@ -146,42 +149,103 @@
     <el-dialog
       v-model="resultVisible"
       title="情绪识别分析报告"
-      width="680px"
+      width="min(1040px, 92vw)"
+      class="emotion-result-dialog"
       destroy-on-close
     >
       <div v-if="result" class="result-dialog-content">
-        <div class="result-summary-section">
-          <div class="summary-metric">
-            <span class="metric-label">主导情绪</span>
-            <strong class="metric-val">{{ emotionLabel(result.dominant_emotion) }}</strong>
-            <span class="metric-sub">置信度 {{ formatPercent(result.confidence) }}</span>
-          </div>
-          <div class="summary-metric">
-            <span class="metric-label">关注等级</span>
-            <el-tag :type="riskType(result.risk_level)" size="large" effect="dark" class="res-risk-tag">
-              {{ riskLabel(result.risk_level) }}
-            </el-tag>
-          </div>
+        <div class="result-overview-grid">
+          <section class="result-image-panel">
+            <div class="section-head">
+              <span>原始样本</span>
+              <strong>{{ analysisSourceLabel }}</strong>
+            </div>
+            <div class="result-image-frame">
+              <img v-if="resultImageSrc" :src="resultImageSrc" alt="本次识别原图" />
+              <div v-else class="result-image-empty">暂无样本图像</div>
+            </div>
+            <div class="result-image-meta">
+              <span>{{ analysisCapturedAt }}</span>
+              <span>{{ resultImageResolution }}</span>
+            </div>
+          </section>
+
+          <section class="result-main-panel">
+            <div class="result-summary-section">
+              <MetricCard
+                label="主导情绪"
+                :value="emotionLabel(result.dominant_emotion)"
+                :note="`置信度 ${formatPercent(result.confidence)}`"
+                :tone="result.risk_level || 'neutral'"
+                icon="monitor"
+                compact
+              />
+              <MetricCard
+                label="关注等级"
+                :value="riskLabel(result.risk_level)"
+                note="系统风险评估结果"
+                :tone="result.risk_level || 'neutral'"
+                icon="warning"
+                compact
+              />
+            </div>
+
+            <div class="result-brief-grid">
+              <div class="brief-card">
+                <span>综合判断</span>
+                <strong>{{ getRiskSummary(result) }}</strong>
+                <p>{{ getObservationText(result) }}</p>
+              </div>
+              <div class="brief-card">
+                <span>关注重点</span>
+                <strong>{{ getCareLevelText(result) }}</strong>
+                <p>{{ getCareActionText(result) }}</p>
+              </div>
+              <div class="brief-card">
+                <span>记录建议</span>
+                <strong>本周持续记录</strong>
+                <p>建议在相近时间段完成 2-3 次自测，观察情绪是否稳定回落。</p>
+              </div>
+            </div>
+          </section>
         </div>
 
         <div class="result-details-grid">
-          <!-- Left: Scores progress -->
           <div class="scores-card-box">
-            <h4 class="box-title">各情绪细分概率</h4>
-            <div v-for="(score, emotion) in result.emotion_scores" :key="emotion" class="score-progress-row">
-              <span class="emotion-name">{{ emotionLabel(emotion) }}</span>
-              <el-progress
-                :percentage="Number((score * 100).toFixed(1))"
-                :stroke-width="10"
-                :color="emotionColor(emotion)"
-                :format="() => `${(score * 100).toFixed(1)}%`"
-              />
+            <div class="box-title-row">
+              <h4 class="box-title">情绪概率明细</h4>
+              <span>按模型输出概率排序</span>
             </div>
+            <el-table
+              :data="emotionScoreRows"
+              class="emotion-score-table"
+              size="small"
+              :empty-text="'暂无概率明细'"
+            >
+              <el-table-column prop="label" label="情绪" width="86" />
+              <el-table-column label="概率" width="86" align="center">
+                <template #default="{ row }">{{ formatPercent(row.score) }}</template>
+              </el-table-column>
+              <el-table-column label="分布" min-width="180">
+                <template #default="{ row }">
+                  <el-progress
+                    class="score-table-progress"
+                    :percentage="row.percentage"
+                    :stroke-width="8"
+                    :color="emotionColor(row.emotion)"
+                    :format="() => `${row.percentage}%`"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column prop="description" label="说明" min-width="150" />
+            </el-table>
           </div>
 
-          <!-- Right: Coping Suggestions -->
           <div class="advice-card-box">
-            <h4 class="box-title">心理干预与应对建议</h4>
+            <div class="box-title-row">
+              <h4 class="box-title">心理干预与应对建议</h4>
+              <span>{{ riskLabel(result.risk_level) }}</span>
+            </div>
             <div class="advice-content">
               <div class="suggestion-item">
                 <el-icon class="advice-icon"><Opportunity /></el-icon>
@@ -197,6 +261,15 @@
             </div>
           </div>
         </div>
+
+        <div class="result-next-card">
+          <div>
+            <span>记录归档</span>
+            <strong>本次分析已写入识别记录</strong>
+            <p>可在识别记录中再次打开完整版报告，查看概率明细和干预建议。</p>
+          </div>
+          <el-button @click="goToEmotionRecords">查看识别记录</el-button>
+        </div>
       </div>
       <template #footer>
         <el-button type="primary" @click="resultVisible = false">确定</el-button>
@@ -207,12 +280,15 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Camera, Plus, RefreshRight, Loading, CircleCheck, Opportunity } from '@element-plus/icons-vue'
+import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { analyzeEmotionImage } from '@/api/emotion'
-import { emotionColor, emotionLabel, riskLabel, riskType } from '@/domain/mentalHealth'
+import { emotionColor, emotionLabel, formatTime, riskLabel } from '@/domain/mentalHealth'
 
+const router = useRouter()
 const mode = ref('camera')
 const videoRef = ref(null)
 const cameraReady = ref(false)
@@ -223,6 +299,11 @@ const previewUrl = ref(null)
 
 const result = ref(null)
 const resultVisible = ref(false)
+const resultImageSrc = ref('')
+const resultImageObjectUrl = ref('')
+const resultImageResolution = ref('标准预览画面')
+const analysisSourceLabel = ref('-')
+const analysisCapturedAt = ref('-')
 
 // Process dialog status
 const processVisible = ref(false)
@@ -231,6 +312,22 @@ const processStatusText = ref('')
 const processLogs = ref([])
 
 let mediaStream = null
+
+const emotionScoreRows = computed(() => {
+  const scores = result.value?.emotion_scores || {}
+  return Object.entries(scores)
+    .map(([emotion, score]) => {
+      const normalizedScore = Number(score) || 0
+      return {
+        emotion,
+        label: emotionLabel(emotion),
+        score: normalizedScore,
+        percentage: Number((normalizedScore * 100).toFixed(1)),
+        description: getScoreDescription(normalizedScore)
+      }
+    })
+    .sort((a, b) => b.score - a.score)
+})
 
 const canAnalyze = computed(() => {
   if (mode.value === 'camera') return !!capturedImage.value && !processVisible.value
@@ -276,13 +373,41 @@ function clearInputs() {
   clearPreview()
 }
 
-function resetAll() {
-  result.value = null
-  clearInputs()
-  if (mode.value === 'camera') {
-    stopCamera()
-    startCamera()
+function clearResultImage() {
+  if (resultImageObjectUrl.value) {
+    URL.revokeObjectURL(resultImageObjectUrl.value)
   }
+  resultImageObjectUrl.value = ''
+  resultImageSrc.value = ''
+  resultImageResolution.value = '标准预览画面'
+}
+
+function loadResultImageResolution(src) {
+  if (!src) return
+  const image = new Image()
+  image.onload = () => {
+    resultImageResolution.value = `${image.naturalWidth} x ${image.naturalHeight}`
+  }
+  image.onerror = () => {
+    resultImageResolution.value = '标准预览画面'
+  }
+  image.src = src
+}
+
+function prepareResultImageSnapshot(sourceMode, file, cameraImage) {
+  clearResultImage()
+  analysisSourceLabel.value = sourceMode === 'camera' ? '实时相机采集' : file?.name || '本地上传图片'
+  analysisCapturedAt.value = formatTime(new Date())
+
+  if (sourceMode === 'camera') {
+    resultImageSrc.value = cameraImage || ''
+  } else if (file) {
+    const objectUrl = URL.createObjectURL(file)
+    resultImageObjectUrl.value = objectUrl
+    resultImageSrc.value = objectUrl
+  }
+
+  loadResultImageResolution(resultImageSrc.value)
 }
 
 function capturePhoto() {
@@ -313,14 +438,14 @@ function handleFileChange(file) {
 function simulateProcess(callback) {
   processPercentage.value = 0
   processLogs.value = []
-  processStatusText.value = '连接表情图像识别算法微服务...'
+  processStatusText.value = '准备图像样本'
   processVisible.value = true
 
   const steps = [
-    { pct: 15, text: '捕获当前面部图像样本成功', log: '获取 640x480 RGB 图像缓存完成' },
-    { pct: 40, text: '检测图片中有效人脸边界框...', log: '检测到单张人脸，置信度 99.1%' },
-    { pct: 65, text: '提取面部关键点特征网络 (MTCNN)...', log: '提取 68 个面部精细网格控制点' },
-    { pct: 90, text: '特征向量输入深度卷积神经网络...', log: '深度融合面部微表情概率特征' }
+    { pct: 18, text: '读取图像信息', log: '样本读取完成' },
+    { pct: 42, text: '定位面部区域', log: '面部区域确认完成' },
+    { pct: 68, text: '计算情绪概率', log: '情绪得分生成中' },
+    { pct: 90, text: '整理分析报告', log: '建议内容生成中' }
   ]
 
   let stepIdx = 0
@@ -335,11 +460,19 @@ function simulateProcess(callback) {
     } else {
       clearInterval(timer)
       processPercentage.value = 100
-      processStatusText.value = '分析完成，正在生成情绪报告'
-      setTimeout(() => {
-        processVisible.value = false
-        callback()
-      }, 400)
+      processStatusText.value = '分析完成'
+      setTimeout(async () => {
+        let shouldOpenResult = false
+        try {
+          shouldOpenResult = await callback()
+        } finally {
+          processVisible.value = false
+        }
+        if (shouldOpenResult) {
+          await nextTick()
+          resultVisible.value = true
+        }
+      }, 120)
     }
   }, 450)
 }
@@ -350,28 +483,51 @@ async function analyzeImage() {
     return
   }
 
+  const analysisMode = mode.value
+  const cameraImage = capturedImage.value
+  const uploadFile = selectedFile.value
+  let analysisRequest
+
+  try {
+    let blob
+    if (analysisMode === 'camera') {
+      const response = await fetch(cameraImage)
+      blob = await response.blob()
+    } else {
+      blob = uploadFile
+    }
+    analysisRequest = analyzeEmotionImage(blob)
+      .then((res) => ({ res }))
+      .catch((error) => ({ error }))
+  } catch {
+    ElMessage.error('图像样本读取失败，请重新采集后再试')
+    return
+  }
+
   simulateProcess(async () => {
     try {
-      let blob
-      if (mode.value === 'camera') {
-        const response = await fetch(capturedImage.value)
-        blob = await response.blob()
-      } else {
-        blob = selectedFile.value
-      }
-
-      const res = await analyzeEmotionImage(blob)
+      const { res, error } = await analysisRequest
+      if (error) throw error
 
       if (res.data) {
+        prepareResultImageSnapshot(analysisMode, uploadFile, cameraImage)
         result.value = res.data
-        resultVisible.value = true
-        resetAll()
+        return true
       } else {
         ElMessage.warning(res.message || '未检测到人脸，请确保五官清晰可见')
       }
     } catch {
       ElMessage.error('服务响应异常，请稍后重试')
     }
+    return false
+  })
+}
+
+function goToEmotionRecords() {
+  resultVisible.value = false
+  router.push({
+    name: 'StudentEmotionRecords',
+    query: result.value?.id ? { record: result.value.id } : {}
   })
 }
 
@@ -387,6 +543,42 @@ function emotionTips(emotion) {
     neutral: ['目前您的心理状态非常稳健平静，这是一种极具复原力的健康心境。', '非常适合进行沉浸式读书、温习或开展逻辑性强的脑力活动。', '继续保持规律作息和均衡饮食，维护平静和谐的个人状态。']
   }
   return tips[emotion] || ['保持规律记录；如状态发生剧烈波动，建议主动寻求校内辅导。']
+}
+
+function getRiskSummary(data) {
+  if (data.risk_level === 'high') return '需要重点关注'
+  if (data.risk_level === 'medium') return '存在轻度波动'
+  return '状态相对平稳'
+}
+
+function getObservationText(data) {
+  const emotion = emotionLabel(data.dominant_emotion)
+  if (data.risk_level === 'high') {
+    return `本次主导情绪为${emotion}，建议尽快联系辅导员或心理中心。`
+  }
+  if (data.risk_level === 'medium') {
+    return `本次主导情绪为${emotion}，建议结合测评进一步确认近期状态。`
+  }
+  return `本次主导情绪为${emotion}，整体处于日常观察范围。`
+}
+
+function getCareLevelText(data) {
+  if (data.risk_level === 'high') return '优先沟通'
+  if (data.risk_level === 'medium') return '连续观察'
+  return '常规记录'
+}
+
+function getCareActionText(data) {
+  if (data.risk_level === 'high') return '建议尽快联系辅导员或心理中心，补充线下沟通记录。'
+  if (data.risk_level === 'medium') return '建议结合测评结果和近一周识别记录继续观察。'
+  return '保持规律作息和自我记录，作为后续趋势对照。'
+}
+
+function getScoreDescription(score) {
+  if (score >= 0.45) return '主要情绪信号'
+  if (score >= 0.25) return '次级情绪信号'
+  if (score >= 0.1) return '弱信号'
+  return '低占比'
 }
 
 watch(mode, async (nextMode, prevMode) => {
@@ -409,6 +601,7 @@ onMounted(() => {
 onUnmounted(() => {
   stopCamera()
   clearPreview()
+  clearResultImage()
 })
 
 const formatPercent = (val) => {
@@ -419,9 +612,11 @@ const formatPercent = (val) => {
 
 <style scoped>
 .emotion-page {
-  display: grid;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   max-width: 100%;
+  height: 100%;
 }
 
 .camera-alert {
@@ -430,9 +625,28 @@ const formatPercent = (val) => {
 
 .emotion-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
+  gap: 12px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.left-column,
+.right-column {
+  min-height: 0;
+}
+
+.capture-card,
+.guide-card {
+  height: 100%;
+}
+
+.capture-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: calc(100% - 49px);
 }
 
 .card-title {
@@ -450,13 +664,15 @@ const formatPercent = (val) => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
 }
 
 .video-wrapper {
   position: relative;
-  width: 100%;
+  width: min(100%, 520px);
   aspect-ratio: 4 / 3;
-  max-width: 480px;
   margin: 0 auto;
   border-radius: var(--mh-radius-lg);
   overflow: hidden;
@@ -502,25 +718,91 @@ const formatPercent = (val) => {
   display: flex;
   justify-content: center;
   gap: 12px;
+  width: min(100%, 520px);
 }
 
-.upload-drag-area {
+.upload-frame {
+  width: min(100%, 520px);
+  flex: none;
+}
+
+.upload-frame :deep(.el-upload),
+.upload-frame :deep(.el-upload-dragger) {
   width: 100%;
+  height: 100%;
+}
+
+.upload-frame :deep(.el-upload-dragger) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.upload-frame-content {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  min-height: 0;
+  border: 1px dashed var(--mh-line-strong);
+  border-radius: var(--mh-radius-lg);
+  overflow: hidden;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.upload-frame-content.is-filled {
+  border-style: solid;
+  background: #0f172a;
+}
+
+.upload-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--mh-muted);
+}
+
+.upload-empty-state strong {
+  font-size: 15px;
+  color: var(--mh-ink);
+}
+
+.upload-empty-state span {
+  font-size: 12px;
 }
 
 .preview-img {
   display: block;
   width: 100%;
-  max-width: 320px;
-  margin: 12px auto 0;
-  border-radius: var(--mh-radius-md);
-  border: 1px solid var(--mh-line);
+  height: 100%;
+  object-fit: contain;
+}
+
+.upload-change-hint {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  height: 32px;
+  border-radius: var(--mh-radius-sm);
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .submit-action-row {
-  margin-top: 24px;
+  margin-top: 4px;
   padding-top: 16px;
   border-top: 1px solid var(--mh-line);
+  width: 100%;
 }
 
 .start-analyze-btn {
@@ -536,7 +818,9 @@ const formatPercent = (val) => {
 .tips-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
+  max-height: calc(100dvh - 250px);
+  overflow: auto;
 }
 
 .tip-item {
@@ -595,7 +879,7 @@ const formatPercent = (val) => {
   height: 6px;
   border-radius: 50%;
   background-color: var(--mh-primary);
-  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0 0 rgba(82, 82, 91, 0.28);
   animation: pulse 1.2s infinite;
 }
 
@@ -620,99 +904,209 @@ const formatPercent = (val) => {
 }
 
 /* Result dialog */
+:deep(.emotion-result-dialog .el-dialog__body) {
+  padding-top: 12px;
+}
+
 .result-dialog-content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+}
+
+.result-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.35fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.result-image-panel,
+.result-main-panel,
+.scores-card-box,
+.advice-card-box {
+  background: var(--mh-surface);
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius-md);
+}
+
+.result-image-panel {
+  padding: 14px;
+}
+
+.result-main-panel {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-head,
+.box-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-head span,
+.box-title-row span {
+  color: var(--mh-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.section-head strong {
+  color: var(--mh-ink);
+  font-size: 12px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-image-frame {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--mh-radius-sm);
+  background: #0f172a;
+  overflow: hidden;
+  border: 1px solid var(--mh-line);
+}
+
+.result-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.result-image-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.result-image-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--mh-muted);
+  font-size: 11.5px;
 }
 
 .result-summary-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  background: var(--mh-surface-muted);
+  gap: 12px;
+}
+
+.result-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.brief-card {
+  min-height: 104px;
+  padding: 12px;
   border: 1px solid var(--mh-line);
-  border-radius: var(--mh-radius-md);
-  padding: 16px 24px;
-}
-
-.summary-metric {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.summary-metric:last-child {
-  align-items: flex-end;
-}
-
-.metric-label {
-  font-size: 11px;
-  color: var(--mh-muted);
-  font-weight: 600;
-}
-
-.metric-val {
-  font-size: 26px;
-  font-weight: 850;
-  color: var(--mh-ink);
-  margin-top: 4px;
-}
-
-.metric-sub {
-  font-size: 11px;
-  color: var(--mh-muted);
-  margin-top: 2px;
-}
-
-.res-risk-tag {
-  font-weight: 700;
-  padding: 6px 16px;
   border-radius: var(--mh-radius-sm);
-  font-size: 13px;
+  background: #fbfbfc;
+}
+
+.brief-card span {
+  display: block;
+  color: var(--mh-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.brief-card strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--mh-ink);
+  font-size: 16px;
+}
+
+.brief-card p {
+  margin: 8px 0 0;
+  color: var(--mh-text);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .result-details-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
   gap: 16px;
 }
 
 .box-title {
-  margin: 0 0 16px;
+  margin: 0;
   font-size: 13.5px;
   font-weight: 800;
   color: var(--mh-ink);
-  border-left: 3px solid var(--mh-primary);
+  border-left: 3px solid var(--mh-accent);
   padding-left: 8px;
 }
 
 .scores-card-box {
-  background: var(--mh-surface);
-  border: 1px solid var(--mh-line);
-  border-radius: var(--mh-radius-md);
   padding: 16px;
 }
 
-.score-progress-row {
-  display: grid;
-  grid-template-columns: 60px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+.emotion-score-table {
+  width: 100%;
 }
 
-.emotion-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--mh-text);
+.emotion-score-table :deep(.el-table__cell) {
+  padding: 7px 0;
+}
+
+.score-table-progress :deep(.el-progress__text) {
+  min-width: 38px;
+  font-size: 11px !important;
 }
 
 .advice-card-box {
-  background: var(--mh-surface);
+  padding: 16px;
+}
+
+.result-next-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
   border: 1px solid var(--mh-line);
   border-radius: var(--mh-radius-md);
-  padding: 16px;
+  background: #fbfbfc;
+}
+
+.result-next-card span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--mh-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.result-next-card strong {
+  display: block;
+  color: var(--mh-ink);
+  font-size: 14px;
+}
+
+.result-next-card p {
+  margin: 5px 0 0;
+  color: var(--mh-text);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .advice-content {
@@ -728,7 +1122,7 @@ const formatPercent = (val) => {
 
 .advice-icon {
   font-size: 18px;
-  color: var(--mh-primary);
+  color: var(--mh-accent);
   margin-top: 2px;
   flex: none;
 }
@@ -769,21 +1163,23 @@ const formatPercent = (val) => {
 @keyframes pulse {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+    box-shadow: 0 0 0 0 rgba(82, 82, 91, 0.28);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+    box-shadow: 0 0 0 6px rgba(82, 82, 91, 0);
   }
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    box-shadow: 0 0 0 0 rgba(82, 82, 91, 0);
   }
 }
 
 @media (max-width: 800px) {
   .emotion-grid,
-  .result-details-grid {
+  .result-overview-grid,
+  .result-details-grid,
+  .result-brief-grid {
     grid-template-columns: 1fr;
   }
 }

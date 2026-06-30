@@ -4,7 +4,7 @@
       <div class="history-header">
         <div class="title-group">
           <span class="card-title">历史会话记录</span>
-          <small class="card-desc">双击行或点击详情，可复核历史评估报告</small>
+          <small class="card-desc">点击详情查看分析报告</small>
         </div>
         <el-button size="small" :icon="Refresh" circle @click="$emit('refresh')" />
       </div>
@@ -15,7 +15,7 @@
       :data="paginatedSessions"
       stripe
       size="small"
-      max-height="300"
+      max-height="220"
       @row-dblclick="handleRowDblClick"
     >
       <el-table-column prop="id" label="ID" width="70" align="center" />
@@ -23,7 +23,7 @@
       <el-table-column prop="class_name" label="班级" min-width="120">
         <template #default="{ row }">{{ row.class_name || '未分班' }}</template>
       </el-table-column>
-      <el-table-column prop="video_filename" label="留存视频文件" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="video_filename" label="记录文件" min-width="180" show-overflow-tooltip />
       <el-table-column prop="dominant_emotion" label="主导情绪" width="90" align="center">
         <template #default="{ row }">
           <span v-if="row.status === 'completed'">
@@ -107,6 +107,14 @@ function handleRowDblClick(row) {
 <style scoped>
 .history-card {
   width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.history-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .history-header {

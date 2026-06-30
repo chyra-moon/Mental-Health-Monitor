@@ -1,6 +1,6 @@
 <template>
   <div class="page trend-page">
-    <PageHeader title="趋势观察" description="利用可视化图表分析近期情绪波动特征及负向情绪频次变化">
+    <PageHeader title="趋势观察">
       <template #actions>
         <el-radio-group v-model="days" size="small" aria-label="趋势时间范围" @change="loadData">
           <el-radio-button :value="7">近 7 天</el-radio-button>
@@ -20,22 +20,23 @@
 
     <!-- Layer 1: Metrics stats -->
     <section class="stat-grid" v-loading="loading">
-      <el-card shadow="never" class="stat-card">
-        <div class="stat-value">{{ totalCount }}</div>
-        <div class="stat-label">总识别次数</div>
-      </el-card>
-      <el-card shadow="never" class="stat-card">
-        <div class="stat-value negative">{{ negativePercent }}%</div>
-        <div class="stat-label">负向情绪占比</div>
-      </el-card>
-      <el-card shadow="never" class="stat-card">
-        <div class="stat-value" :class="warnCount > 0 ? 'danger' : ''">{{ warnCount }}</div>
-        <div class="stat-label">待跟进预警</div>
-      </el-card>
-      <el-card shadow="never" class="stat-card">
-        <div class="stat-value">{{ dayCount }}</div>
-        <div class="stat-label">活跃天数</div>
-      </el-card>
+      <MetricCard label="总识别次数" :value="totalCount" unit="次" note="当前周期内的情绪识别样本" tone="info" icon="files" />
+      <MetricCard
+        label="负向情绪占比"
+        :value="`${negativePercent}%`"
+        note="悲伤、愤怒、恐惧、厌恶占比"
+        :tone="negativePercent >= 30 ? 'warning' : 'info'"
+        icon="pie"
+      />
+      <MetricCard
+        label="待跟进预警"
+        :value="warnCount"
+        unit="条"
+        note="仍需教师或辅导人员关注"
+        :tone="warnCount > 0 ? 'danger' : 'stable'"
+        icon="warning"
+      />
+      <MetricCard label="活跃天数" :value="dayCount" unit="天" note="周期内有识别记录的日期数" tone="neutral" icon="calendar" />
     </section>
 
     <!-- Layer 2: Main charts and analysis panel -->
@@ -93,6 +94,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { Opportunity } from '@element-plus/icons-vue'
+import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useEcharts } from '@/composables/useEcharts'
 import { getStudentTrend } from '@/api/stats'
@@ -200,6 +202,7 @@ function renderLineChart(dates, series) {
   lineChart.render({
     tooltip: {
       trigger: 'axis',
+      confine: true,
       formatter: (params) => {
         const date = params[0].axisValue
         let html = `<strong>${date}</strong><br/>`
@@ -215,7 +218,7 @@ function renderLineChart(dates, series) {
       data: series.map((item) => item.name),
       bottom: 0,
     },
-    grid: { left: 40, right: 20, top: 20, bottom: 40 },
+    grid: { left: 44, right: 24, top: 24, bottom: 44, containLabel: true },
     xAxis: {
       type: 'category',
       data: dates,
@@ -239,7 +242,7 @@ function renderPieChart() {
     }))
 
   pieChart.render({
-    tooltip: { trigger: 'item', formatter: '{b}: {c} 次 ({d}%)' },
+    tooltip: { trigger: 'item', confine: true, formatter: '{b}: {c} 次 ({d}%)' },
     series: [
       {
         type: 'pie',
@@ -271,7 +274,7 @@ onUnmounted(() => {
 .trend-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
 }
 
@@ -285,37 +288,12 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.stat-card {
-  text-align: center;
-  padding: 8px 12px;
-}
-
-.stat-value {
-  color: var(--mh-ink);
-  font-size: 26px;
-  font-weight: 850;
-}
-
-.stat-value.negative {
-  color: var(--mh-warning);
-}
-
-.stat-value.danger {
-  color: var(--mh-danger);
-}
-
-.stat-label {
-  margin-top: 4px;
-  color: var(--mh-muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .main-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.95fr);
+  gap: 12px;
   flex: 1;
+  min-height: 0;
 }
 
 .left-col, .right-col {
@@ -323,11 +301,22 @@ onUnmounted(() => {
 }
 
 .chart-card {
-  height: 380px;
+  height: 100%;
+  min-height: 380px;
+  overflow: hidden;
 }
 
 .insight-card {
-  height: 380px;
+  height: 100%;
+  min-height: 380px;
+  overflow: hidden;
+}
+
+.chart-card :deep(.el-card__body),
+.insight-card :deep(.el-card__body) {
+  height: calc(100% - 49px);
+  overflow: hidden;
+  padding: 10px 14px 12px !important;
 }
 
 .card-title {
@@ -337,7 +326,8 @@ onUnmounted(() => {
 
 .chart-box {
   width: 100%;
-  height: 310px;
+  height: 100%;
+  min-height: 0;
 }
 
 .insight-content {
@@ -349,13 +339,13 @@ onUnmounted(() => {
 .pie-section {
   display: flex;
   align-items: center;
-  height: 140px;
-  gap: 16px;
+  height: 150px;
+  gap: 18px;
 }
 
 .mini-pie-box {
-  width: 140px;
-  height: 140px;
+  width: 150px;
+  height: 150px;
   flex: none;
 }
 
@@ -400,7 +390,7 @@ onUnmounted(() => {
   border: 1px solid var(--mh-line);
   padding: 12px 16px;
   border-radius: var(--mh-radius-md);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .diagnosis-header {
@@ -412,7 +402,7 @@ onUnmounted(() => {
 
 .diagnosis-icon {
   font-size: 16px;
-  color: var(--mh-primary);
+  color: var(--mh-accent);
 }
 
 .diagnosis-header h5 {
@@ -436,6 +426,7 @@ onUnmounted(() => {
   }
   .chart-card, .insight-card {
     height: auto;
+    min-height: 360px;
   }
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div class="page students-page">
-    <PageHeader title="学生档案" description="查看和检索在册学生的个人资料、班级归属和账号状态">
+    <PageHeader title="学生档案">
       <template #actions>
         <el-button :icon="RefreshRight" type="primary" @click="loadData" :loading="loading">刷新</el-button>
       </template>
@@ -21,7 +21,7 @@
         :data="paginatedStudents"
         stripe
         size="small"
-        max-height="450"
+        max-height="390"
         @sort-change="handleSortChange"
         class="students-table"
       >
@@ -35,7 +35,7 @@
         </el-table-column>
         
         <!-- Interactive header class selection filter -->
-        <el-table-column prop="class_name" min-width="160">
+        <el-table-column prop="class_name" label="班级" min-width="170" sortable="custom">
           <template #header>
             <el-select
               v-model="selectedClassFilter"
@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RefreshRight } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { listStudents } from '@/api/users'
@@ -137,6 +137,10 @@ const paginatedStudents = computed(() => {
   return filteredStudents.value.slice(start, end)
 })
 
+watch(selectedClassFilter, () => {
+  currentPage.value = 1
+})
+
 async function loadData() {
   loading.value = true
   loadError.value = ''
@@ -168,7 +172,7 @@ onMounted(loadData)
 .students-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
 }
 
@@ -181,6 +185,13 @@ onMounted(loadData)
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  min-height: 0;
+}
+
+.students-table-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .students-table {

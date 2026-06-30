@@ -1,9 +1,6 @@
 <template>
   <div class="page profile-page">
-    <PageHeader
-      title="个人档案"
-      :description="locked ? '您的档案已录入完成。如需调整，请联系管理员或心理中心老师。' : '请补全以下真实信息。保存后，系统将关联您的测评数据并提供精细化服务。'"
-    />
+    <PageHeader title="个人档案" />
 
     <el-alert
       v-if="loadError"
@@ -180,16 +177,25 @@ const handleSubmit = async () => {
 
 <style scoped>
 .profile-page {
-  display: grid;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   max-width: 100%;
+  height: 100%;
 }
 
 .profile-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
-  gap: 16px;
-  align-items: start;
+  gap: 12px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.main-column,
+.side-column {
+  min-height: 0;
 }
 
 .card-header-title {
@@ -249,6 +255,17 @@ const handleSubmit = async () => {
 
 .guide-card {
   height: 100%;
+}
+
+.info-card,
+.guide-card {
+  height: 100%;
+}
+
+.info-card :deep(.el-card__body),
+.guide-card :deep(.el-card__body) {
+  max-height: calc(100dvh - 190px);
+  overflow: auto;
 }
 
 .guide-content {

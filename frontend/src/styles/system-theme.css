@@ -1,35 +1,37 @@
 :root {
-  --mh-primary: #4f46e5;
-  --mh-primary-strong: #3730a3;
-  --mh-primary-soft: #e0e7ff;
-  --mh-action: #7c2d12;
-  --mh-action-strong: #4c1d95;
-  --mh-bg: #f8fafc;
+  --mh-primary: #18181b;
+  --mh-primary-strong: #27272a;
+  --mh-primary-soft: #f4f4f5;
+  --mh-accent: #7c3aed;
+  --mh-accent-soft: #f5f3ff;
+  --mh-action: #18181b;
+  --mh-action-strong: #27272a;
+  --mh-bg: #f7f7f8;
   --mh-surface: #ffffff;
-  --mh-surface-muted: #f1f5f9;
-  --mh-ink: #0f172a;
-  --mh-text: #334155;
-  --mh-muted: #64748b;
-  --mh-line: #e2e8f0;
-  --mh-line-strong: #cbd5e1;
-  --mh-danger: #ef4444;
-  --mh-danger-soft: #fee2e2;
-  --mh-warning: #f59e0b;
-  --mh-warning-soft: #fef3c7;
-  --mh-success: #10b981;
-  --mh-success-soft: #d1fae5;
-  --mh-info: #0ea5e9;
-  --mh-info-soft: #e0f2fe;
-  --mh-chart-risk: #ef4444;
-  --mh-chart-warning: #f59e0b;
-  --mh-chart-stable: #10b981;
-  --mh-chart-attention: #0ea5e9;
-  --mh-chart-neutral: #64748b;
+  --mh-surface-muted: #f4f4f5;
+  --mh-ink: #18181b;
+  --mh-text: #3f3f46;
+  --mh-muted: #71717a;
+  --mh-line: #e4e4e7;
+  --mh-line-strong: #d4d4d8;
+  --mh-danger: #dc2626;
+  --mh-danger-soft: #fef2f2;
+  --mh-warning: #b45309;
+  --mh-warning-soft: #fff7ed;
+  --mh-success: #52525b;
+  --mh-success-soft: #f4f4f5;
+  --mh-info: #6d5a7a;
+  --mh-info-soft: #f5f3ff;
+  --mh-chart-risk: #dc2626;
+  --mh-chart-warning: #b45309;
+  --mh-chart-stable: #52525b;
+  --mh-chart-attention: #7c3aed;
+  --mh-chart-neutral: #71717a;
   --mh-radius-sm: 6px;
   --mh-radius-md: 8px;
-  --mh-radius-lg: 12px;
-  --mh-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
-  --mh-focus: 0 0 0 3px rgba(99, 102, 241, 0.24);
+  --mh-radius-lg: 10px;
+  --mh-shadow: 0 10px 30px rgba(24, 24, 27, 0.06);
+  --mh-focus: 0 0 0 3px rgba(124, 58, 237, 0.16);
   --mh-cyan: var(--mh-info);
   --mh-mint: var(--mh-success);
   --mh-soft: var(--mh-surface);
@@ -49,6 +51,8 @@
 html,
 body,
 #app {
+  width: 100%;
+  min-width: 0;
   min-height: 100%;
   margin: 0;
 }
@@ -66,6 +70,7 @@ body {
     "Segoe UI",
     sans-serif;
   line-height: 1.5;
+  overflow: hidden;
 }
 
 * {
@@ -86,7 +91,10 @@ body {
 .page {
   color: var(--mh-text);
   display: grid;
-  gap: 14px;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
 }
 
 .page-header {
@@ -114,11 +122,11 @@ body {
   color: var(--mh-ink);
   border-bottom: 1px solid var(--mh-line) !important;
   font-weight: 700;
-  padding: 14px 16px !important;
+  padding: 12px 14px !important;
 }
 
 .el-card__body {
-  padding: 16px !important;
+  padding: 14px !important;
 }
 
 .el-table {
@@ -178,6 +186,12 @@ body {
   box-shadow: none;
 }
 
+.el-button--success {
+  background: var(--mh-success) !important;
+  border-color: var(--mh-success) !important;
+  color: #ffffff !important;
+}
+
 .el-button--primary:hover,
 .el-button--primary:focus {
   background: var(--mh-primary-strong) !important;
@@ -197,14 +211,69 @@ body {
   border-color: #8f1d14 !important;
 }
 
+.el-button.is-link,
+.el-button.is-text,
+.el-button.is-link.el-button--primary,
+.el-button.is-text.el-button--primary,
+.el-button.is-link.el-button--danger,
+.el-button.is-text.el-button--danger {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 2px !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  color: var(--mh-muted) !important;
+  box-shadow: none !important;
+}
+
+.el-button.is-link:hover,
+.el-button.is-link:focus,
+.el-button.is-text:hover,
+.el-button.is-text:focus {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--mh-ink) !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .el-tag {
   border-radius: var(--mh-radius-sm) !important;
   font-weight: 650;
 }
 
+.el-tag.el-tag--success {
+  --el-tag-bg-color: var(--mh-success-soft);
+  --el-tag-border-color: var(--mh-line-strong);
+  --el-tag-text-color: var(--mh-success);
+}
+
+.el-tag.el-tag--info {
+  --el-tag-bg-color: var(--mh-info-soft);
+  --el-tag-border-color: #ddd6fe;
+  --el-tag-text-color: var(--mh-info);
+}
+
 .el-dialog,
 .el-message-box {
   max-width: calc(100vw - 32px);
+}
+
+.el-dialog {
+  border-radius: 10px !important;
+  box-shadow: 0 24px 80px rgba(24, 24, 27, 0.22) !important;
+}
+
+.el-dialog__header {
+  padding: 18px 20px 12px !important;
+  border-bottom: 1px solid var(--mh-line);
+}
+
+.el-dialog__body {
+  max-height: min(72vh, 720px);
+  overflow: auto;
+  padding: 18px 20px !important;
 }
 
 .el-pagination {

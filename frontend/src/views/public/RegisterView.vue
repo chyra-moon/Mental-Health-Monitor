@@ -1,16 +1,16 @@
 <template>
   <CampusAuthFrame
     mode="register"
-    title="创建学生自助账号"
-    description="学生账号用于完成个人档案、情绪识别记录和心理测评；管理员和心理中心账号请由学校统一开通。"
+    title="创建学生账号"
+    description="注册后完善档案即可使用学生端。"
     form-title="学生注册"
-    form-description="注册后请立即完善真实姓名、性别和班级，资料保存后需联系管理员才能修改。"
+    form-description="设置登录账号和密码。"
     form-title-id="register-form-title"
     :context-items="contextItems"
   >
     <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleRegister">
       <el-form-item label="用户名" prop="username">
-        <el-input v-model.trim="form.username" autocomplete="username" placeholder="设置登录用户名" :disabled="loading" />
+        <el-input v-model.trim="form.username" autocomplete="username" placeholder="设置用户名" :disabled="loading" />
       </el-form-item>
       <el-form-item label="密码" prop="password">
         <el-input
@@ -45,8 +45,8 @@ const formRef = ref(null)
 const loading = ref(false)
 
 const contextItems = [
-  { label: '账号身份', text: '当前注册入口只创建学生账号，用于本人记录和测评。' },
-  { label: '资料入档', text: '首次登录后需完善真实姓名、性别和班级，便于学校在需要时提供支持。' },
+  { label: '账号身份', text: '仅创建学生账号。' },
+  { label: '资料入档', text: '首次登录后完善姓名、性别和班级。' },
 ]
 
 const form = reactive({
