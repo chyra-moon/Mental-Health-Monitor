@@ -3,7 +3,6 @@
     <div class="header-content">
       <span v-if="eyebrow" class="eyebrow">{{ eyebrow }}</span>
       <h2 class="title">{{ title }}</h2>
-      <p v-if="description" class="description">{{ description }}</p>
     </div>
     <div v-if="$slots.actions" class="header-actions">
       <slot name="actions"></slot>
@@ -20,10 +19,6 @@ defineProps({
   title: {
     type: String,
     required: true
-  },
-  description: {
-    type: String,
-    default: ''
   }
 })
 </script>
@@ -32,23 +27,23 @@ defineProps({
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  padding: 16px 20px;
+  align-items: center;
+  padding: 12px 20px;
   background: var(--mh-surface);
   border-bottom: 1px solid var(--mh-line);
   margin-bottom: 16px;
-  border-radius: var(--mh-radius-lg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  border-radius: var(--mh-radius-md);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
 }
 
 .header-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .eyebrow {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -57,20 +52,14 @@ defineProps({
 
 .title {
   margin: 0;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--mh-ink);
 }
 
-.description {
-  margin: 0;
-  font-size: 13px;
-  color: var(--mh-muted);
-}
-
 .header-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -78,7 +67,7 @@ defineProps({
   .page-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
   }
   .header-actions {
     width: 100%;

@@ -18,10 +18,23 @@
 
     <!-- Layer 1: Stat cards -->
     <div class="triage-grid" v-loading="loading">
-      <el-card v-for="item in triageMetrics" :key="item.label" class="triage-card" shadow="never">
-        <span class="metric-label">{{ item.label }}</span>
-        <strong :class="'tone-' + item.tone">{{ item.value }}</strong>
-        <p>{{ item.detail }}</p>
+      <el-card
+        v-for="item in triageMetrics"
+        :key="item.label"
+        class="triage-card"
+        :class="'border-' + item.tone"
+        shadow="never"
+      >
+        <div class="card-inner">
+          <div class="card-left">
+            <span class="metric-label">{{ item.label }}</span>
+            <strong class="metric-number" :class="'tone-' + item.tone">{{ item.value }}</strong>
+            <p class="metric-desc">{{ item.detail }}</p>
+          </div>
+          <div class="card-right">
+            <el-icon class="card-icon" :class="'tone-' + item.tone"><component :is="item.icon" /></el-icon>
+          </div>
+        </div>
       </el-card>
     </div>
 
@@ -178,7 +191,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { RefreshRight } from '@element-plus/icons-vue'
+import { RefreshRight, Warning, Document, CircleCheck, PieChart } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/PageHeader.vue'
 import { getAdminEmotionDistribution, getAdminOverview, getAdminRiskTrend } from '@/api/stats'
@@ -221,25 +234,29 @@ const triageMetrics = computed(() => [
     label: '待处置风险预警',
     value: pendingWarnings.value.length,
     tone: pendingWarnings.value.length ? 'warning' : 'stable',
-    detail: `高危预警 ${highPendingWarnings.value.length} 条 · 超时未决 ${overdueWarnings.value.length} 条`,
+    icon: Warning,
+    detail: `高危 ${highPendingWarnings.value.length} 条 · 超时 ${overdueWarnings.value.length} 条`,
   },
   {
     label: '今日识别样本数',
     value: overview.value.today_records ?? 0,
     tone: 'info',
-    detail: `全校在册学生 ${overview.value.student_count ?? 0} 人`,
+    icon: Document,
+    detail: `全校学生 ${overview.value.student_count ?? 0} 人`,
   },
   {
     label: '今日处理标记数',
     value: handledTodayCount.value,
     tone: handledTodayCount.value ? 'stable' : 'muted',
-    detail: '仅代表预警记录跟进完成',
+    icon: CircleCheck,
+    detail: '仅代表已完成跟进',
   },
   {
     label: '全校负向情绪比',
     value: `${negativeEmotionPercent.value}%`,
     tone: negativeEmotionPercent.value >= 30 ? 'warning' : 'info',
-    detail: '悲伤/愤怒/恐惧/厌恶样本占比',
+    icon: PieChart,
+    detail: '负向心境样本占比',
   },
 ])
 
@@ -390,34 +407,93 @@ onMounted(loadData)
 .triage-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .triage-card {
-  height: 112px;
+  height: 114px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.triage-card :deep(.el-card__body) {
+  padding: 12px 16px !important;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Accent left borders based on status */
+.triage-card.border-warning {
+  border-left: 4px solid var(--mh-warning) !important;
+}
+
+.triage-card.border-stable {
+  border-left: 4px solid var(--mh-success) !important;
+}
+
+.triage-card.border-info {
+  border-left: 4px solid var(--mh-info) !important;
+}
+
+.triage-card.border-muted {
+  border-left: 4px solid var(--mh-muted) !important;
+}
+
+.card-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.card-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .metric-label {
   display: block;
   color: var(--mh-muted);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.triage-card strong {
-  display: block;
-  margin-top: 6px;
-  color: var(--mh-ink);
-  font-size: 22px;
+  font-size: 11px;
   font-weight: 700;
-  line-height: 1.25;
 }
 
-.triage-card p {
-  margin: 8px 0 0;
+.metric-number {
+  display: block;
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.metric-desc {
+  margin: 4px 0 0;
   color: var(--mh-muted);
-  font-size: 11.5px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.card-icon {
+  font-size: 28px;
+  opacity: 0.16;
 }
 
 .tone-warning {

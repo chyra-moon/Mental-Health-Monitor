@@ -2,16 +2,23 @@
   <div class="shell-container">
     <!-- Layer 1: Top Bar (Slim height, premium branding & user profile) -->
     <header class="shell-header">
+      <!-- Left: User Profile -->
       <div class="header-left">
-        <AppLogo />
-        <span class="system-title">基于物联网数据分析的心理健康监测系统</span>
-      </div>
-      <div class="header-right">
         <div class="user-profile">
           <el-avatar :size="28" class="user-avatar">{{ avatarInitial }}</el-avatar>
           <span class="user-name">{{ userDisplayName }}</span>
           <span class="role-badge">{{ userRoleLabel }}</span>
         </div>
+      </div>
+
+      <!-- Center: Logo and Title -->
+      <div class="header-center">
+        <AppLogo />
+        <span class="system-title">基于物联网数据分析的心理健康监测系统</span>
+      </div>
+
+      <!-- Right: Logout button -->
+      <div class="header-right">
         <el-button type="danger" size="default" class="logout-btn" @click="handleLogout">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="logout-icon">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -131,22 +138,30 @@ const handleLogout = () => {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 2;
+  justify-content: center;
 }
 
 .system-title {
-  font-size: 15px;
-  font-weight: 750;
+  font-size: 14px;
+  font-weight: 700;
   letter-spacing: 0.02em;
-  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #f1f5f9;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .user-profile {

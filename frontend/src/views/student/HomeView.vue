@@ -18,30 +18,51 @@
 
     <!-- Layer 1: Stat cards -->
     <div class="summary-grid" v-loading="loading">
-      <el-card class="summary-card" shadow="never">
-        <span class="card-label">最近识别情绪</span>
-        <strong class="card-value">{{ latestRecord ? emotionLabel(latestRecord.dominant_emotion) : '未记录' }}</strong>
-        <p class="card-desc">
-          {{
-            latestRecord
-              ? `${formatTime(latestRecord.created_at)} · ${riskLabel(latestRecord.risk_level)}`
-              : '建议每周至少采集一次情绪数据'
-          }}
-        </p>
+      <el-card class="summary-card border-info" shadow="never">
+        <div class="card-inner">
+          <div class="card-left">
+            <span class="card-label">最近识别情绪</span>
+            <strong class="card-value">{{ latestRecord ? emotionLabel(latestRecord.dominant_emotion) : '未记录' }}</strong>
+            <p class="card-desc">
+              {{
+                latestRecord
+                  ? `${formatTime(latestRecord.created_at)} · ${riskLabel(latestRecord.risk_level)}`
+                  : '建议每周至少采集一次情绪数据'
+              }}
+            </p>
+          </div>
+          <div class="card-right">
+            <el-icon class="card-icon tone-info"><Tickets /></el-icon>
+          </div>
+        </div>
       </el-card>
       
-      <el-card class="summary-card" shadow="never">
-        <span class="card-label">待跟进关注提醒</span>
-        <strong class="card-value" :class="latestWarning ? 'risk-' + latestWarning.level : 'risk-low'">
-          {{ latestWarning ? riskLabel(latestWarning.level) : '暂无待处理关注' }}
-        </strong>
-        <p class="card-desc">{{ latestWarningSummary }}</p>
+      <el-card class="summary-card" :class="latestWarning ? 'border-' + latestWarning.level : 'border-stable'" shadow="never">
+        <div class="card-inner">
+          <div class="card-left">
+            <span class="card-label">待跟进关注提醒</span>
+            <strong class="card-value" :class="latestWarning ? 'risk-' + latestWarning.level : 'risk-low'">
+              {{ latestWarning ? riskLabel(latestWarning.level) : '暂无待处理关注' }}
+            </strong>
+            <p class="card-desc">{{ latestWarningSummary }}</p>
+          </div>
+          <div class="card-right">
+            <el-icon class="card-icon" :class="latestWarning ? 'risk-' + latestWarning.level : 'risk-low'"><Bell /></el-icon>
+          </div>
+        </div>
       </el-card>
       
-      <el-card class="summary-card" shadow="never">
-        <span class="card-label">近 7 天累计评测</span>
-        <strong class="card-value">{{ totalTrendCount }} 次</strong>
-        <p class="card-desc">负向情绪频次占比 {{ negativePercent }}%，覆盖 {{ trendDayCount }} 天。</p>
+      <el-card class="summary-card border-primary" shadow="never">
+        <div class="card-inner">
+          <div class="card-left">
+            <span class="card-label">近 7 天累计评测</span>
+            <strong class="card-value">{{ totalTrendCount }} 次</strong>
+            <p class="card-desc">负向占比 {{ negativePercent }}%，覆盖 {{ trendDayCount }} 天。</p>
+          </div>
+          <div class="card-right">
+            <el-icon class="card-icon tone-primary"><TrendCharts /></el-icon>
+          </div>
+        </div>
       </el-card>
     </div>
 
@@ -199,7 +220,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Refresh, Document, Opportunity } from '@element-plus/icons-vue'
+import { Refresh, Document, Opportunity, Tickets, Bell, TrendCharts } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { listMyRecords } from '@/api/records'
 import { getStudentTrend } from '@/api/stats'
@@ -322,34 +343,105 @@ onMounted(loadData)
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .summary-card {
-  height: 112px;
+  height: 114px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.summary-card :deep(.el-card__body) {
+  padding: 12px 16px !important;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Accent left borders based on status */
+.summary-card.border-primary {
+  border-left: 4px solid var(--mh-primary) !important;
+}
+
+.summary-card.border-info {
+  border-left: 4px solid var(--mh-info) !important;
+}
+
+.summary-card.border-stable {
+  border-left: 4px solid var(--mh-success) !important;
+}
+
+.summary-card.border-medium {
+  border-left: 4px solid var(--mh-warning) !important;
+}
+
+.summary-card.border-high {
+  border-left: 4px solid var(--mh-danger) !important;
+}
+
+.card-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.card-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .card-label {
   display: block;
   color: var(--mh-muted);
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .card-value {
   display: block;
-  margin-top: 6px;
-  color: var(--mh-ink);
+  margin-top: 4px;
   font-size: 20px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .card-desc {
-  margin: 8px 0 0;
+  margin: 4px 0 0;
   color: var(--mh-muted);
-  font-size: 11.5px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.card-icon {
+  font-size: 28px;
+  opacity: 0.16;
+}
+
+.tone-primary {
+  color: var(--mh-primary) !important;
+}
+
+.tone-info {
+  color: var(--mh-info) !important;
 }
 
 .risk-low {
