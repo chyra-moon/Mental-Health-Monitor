@@ -125,7 +125,7 @@ const handleLogout = () => {
   background-color: #0f172a; /* Slate 900 for premium branding bar */
   color: #ffffff;
   z-index: 10;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .header-left {

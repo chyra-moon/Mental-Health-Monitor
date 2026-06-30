@@ -66,21 +66,13 @@ defineProps({
   width: 100vw;
   min-height: 100vh;
   padding: 24px;
-  background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-              radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
-              linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  background-color: #f1f5f9; /* Simple clean light gray background */
   overflow-x: hidden;
   box-sizing: border-box;
 }
 
 .auth-mesh {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 32px 32px;
-  opacity: 0.8;
-  pointer-events: none;
-  z-index: 1;
+  display: none; /* Removed heavy background mesh pattern */
 }
 
 .auth-container {
@@ -90,112 +82,105 @@ defineProps({
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 440px;
-  gap: 32px;
-  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  max-width: 420px;
+  gap: 24px;
+  animation: fadeIn 0.4s ease-out forwards;
 }
 
 .auth-brand {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 12px;
-  text-align: center;
+  text-align: left;
 }
 
 .brand-logo {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #6366f1, #8b95f6);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--mh-primary);
   color: #ffffff;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
 }
 
 .brand-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
-  color: #ffffff;
-  letter-spacing: 0.02em;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  color: var(--mh-ink);
 }
 
 .auth-card {
   width: 100%;
-  padding: 40px;
-  background: rgba(30, 41, 59, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  padding: 32px;
+  background: #ffffff; /* Clean white card */
+  border: 1px solid var(--mh-line);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
   box-sizing: border-box;
 }
 
 .card-header {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
   text-align: center;
 }
 
 .card-title {
   margin: 0;
-  font-size: 24px;
-  font-weight: 750;
-  color: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--mh-ink);
 }
 
 .card-desc {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--mh-muted);
   line-height: 1.5;
 }
 
 .card-body :deep(.el-form-item__label) {
-  color: #94a3b8 !important;
-  font-weight: 600;
+  color: var(--mh-text) !important;
+  font-weight: 700;
   font-size: 13px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .card-body :deep(.el-input__wrapper) {
-  background: rgba(15, 23, 42, 0.6) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: #ffffff !important;
+  border: 1px solid var(--mh-line) !important;
   box-shadow: none !important;
 }
 
 .card-body :deep(.el-input__inner) {
-  color: #ffffff !important;
-  height: 42px;
+  color: var(--mh-ink) !important;
+  height: 40px;
 }
 
 .card-body :deep(.el-input__wrapper.is-focus) {
-  border-color: #6366f1 !important;
+  border-color: var(--mh-primary) !important;
 }
 
 .card-body :deep(.el-button--primary) {
-  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+  background: var(--mh-primary) !important;
   border: none !important;
-  height: 44px;
-  border-radius: 12px !important;
+  height: 40px;
+  border-radius: var(--mh-radius-md) !important;
   font-weight: 700;
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
-  transition: all 0.2s ease;
+  box-shadow: none;
+  width: 100%;
 }
 
 .card-body :deep(.el-button--primary:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.35);
+  background: var(--mh-primary-strong) !important;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;

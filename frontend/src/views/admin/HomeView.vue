@@ -408,8 +408,8 @@ onMounted(loadData)
   display: block;
   margin-top: 6px;
   color: var(--mh-ink);
-  font-size: 24px;
-  font-weight: 850;
+  font-size: 22px;
+  font-weight: 700;
   line-height: 1.25;
 }
 

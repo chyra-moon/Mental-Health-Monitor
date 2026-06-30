@@ -158,9 +158,23 @@ body {
     box-shadow 180ms ease;
 }
 
+/* Default buttons: Solid light-gray background and visible borders */
+.el-button:not(.el-button--primary):not(.el-button--danger):not(.el-button--success):not(.el-button--warning):not(.el-button--info) {
+  background-color: var(--mh-surface-muted) !important;
+  border-color: var(--mh-line-strong) !important;
+  color: var(--mh-text) !important;
+}
+
+.el-button:not(.el-button--primary):not(.el-button--danger):not(.el-button--success):not(.el-button--warning):not(.el-button--info):hover {
+  background-color: var(--mh-line) !important;
+  border-color: var(--mh-line-strong) !important;
+  color: var(--mh-ink) !important;
+}
+
 .el-button--primary {
   background: var(--mh-primary) !important;
   border-color: var(--mh-primary) !important;
+  color: #ffffff !important;
   box-shadow: none;
 }
 
@@ -173,6 +187,7 @@ body {
 .el-button--danger {
   background: var(--mh-danger) !important;
   border-color: var(--mh-danger) !important;
+  color: #ffffff !important;
   box-shadow: none;
 }
 
