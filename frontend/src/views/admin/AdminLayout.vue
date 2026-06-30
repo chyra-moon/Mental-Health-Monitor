@@ -17,10 +17,10 @@ import { House, OfficeBuilding, Tickets, User, VideoCamera, Warning } from '@ele
 
 const adminNavItems = [
   { index: '/admin', label: '风险工作台', icon: House },
-  { index: '/admin/classes', label: '班级管理', icon: OfficeBuilding },
+  { index: '/admin/video-analysis', label: '视频会话', icon: VideoCamera },
   { index: '/admin/warnings', label: '预警处置', icon: Warning },
   { index: '/admin/students', label: '学生档案', icon: User },
   { index: '/admin/records', label: '识别记录', icon: Tickets },
-  { index: '/admin/video-analysis', label: '视频会话', icon: VideoCamera },
+  { index: '/admin/classes', label: '班级管理', icon: OfficeBuilding },
 ]
 </script>

@@ -2,7 +2,7 @@
   <div class="page warning-workflow">
     <PageHeader
       title="预警处置"
-      description="按风险等级和等待时长查看需要跟进的学生预警，状态标记前请先完成一次线下确认或校内记录"
+      description="追踪全校高风险心理信号及超时未处置的预警记录，核实后完成状态标记"
     >
       <template #actions>
         <el-button :icon="RefreshRight" type="primary" @click="loadWarnings" :loading="loading">刷新</el-button>
@@ -18,167 +18,168 @@
       :closable="false"
     />
 
-    <section class="triage-summary" aria-label="预警处置概览">
+    <!-- Layer 1: Metrics stats -->
+    <section class="triage-summary" v-loading="loading">
       <el-card shadow="never" class="summary-card">
-        <span>待处置预警</span>
-        <strong>{{ pendingCount }}</strong>
-        <p>需要辅导员或心理中心完成一次确认后再标记状态。</p>
+        <span class="sum-label">待跟进预警数</span>
+        <strong class="sum-val">{{ pendingCount }}</strong>
+        <p class="sum-desc">需要线下干预确认并更新状态</p>
       </el-card>
       <el-card shadow="never" class="summary-card">
-        <span>高风险待跟进</span>
-        <strong class="risk-high">{{ highPendingCount }}</strong>
-        <p>建议优先查看学生、班级、触发原因和系统建议。</p>
+        <span class="sum-label">重点关注高危数</span>
+        <strong class="sum-val risk-high">{{ highPendingCount }}</strong>
+        <p class="sum-desc">建议2小时内开启排查干预</p>
       </el-card>
       <el-card shadow="never" class="summary-card">
-        <span>超过 24 小时</span>
-        <strong class="risk-medium">{{ overdueCount }}</strong>
-        <p>以创建时间计算，提示当前状态仍未标记处理。</p>
+        <span class="sum-label">超 24h 未处置</span>
+        <strong class="sum-val risk-medium">{{ overdueCount }}</strong>
+        <p class="sum-desc">超时未确认的系统风险记录</p>
       </el-card>
       <el-card shadow="never" class="summary-card">
-        <span>今日已标记</span>
-        <strong>{{ handledTodayCount }}</strong>
-        <p>仅表示预警状态已更新，不代表干预流程已结案。</p>
+        <span class="sum-label">今日已完成跟进</span>
+        <strong class="sum-val">{{ handledTodayCount }}</strong>
+        <p class="sum-desc">表示今日更新状态的预警数量</p>
       </el-card>
     </section>
 
+    <!-- Layer 2: Fixed height table card with pagination -->
     <el-card class="warning-table-card" shadow="never">
       <template #header>
         <div class="table-toolbar">
-          <div>
-            <strong>预警列表</strong>
-            <small>共 {{ filteredWarnings.length }} 条，按处置优先级和预警时间排序</small>
+          <div class="toolbar-left">
+            <span class="card-title">预警信号列表</span>
+            <small class="card-desc">共 {{ filteredWarnings.length }} 条，按优先级高低进行推荐排序</small>
           </div>
           <el-radio-group v-model="activeFilter" size="small" aria-label="筛选预警状态">
-            <el-radio-button label="all">全部</el-radio-button>
-            <el-radio-button label="pending">待处置</el-radio-button>
-            <el-radio-button label="high">高风险</el-radio-button>
-            <el-radio-button label="handled">已标记</el-radio-button>
+            <el-radio-button value="all">全部</el-radio-button>
+            <el-radio-button value="pending">待处置</el-radio-button>
+            <el-radio-button value="high">高风险</el-radio-button>
+            <el-radio-button value="handled">已处理</el-radio-button>
           </el-radio-group>
         </div>
       </template>
 
-      <el-empty v-if="!loading && filteredWarnings.length === 0" description="暂无符合条件的风险预警" />
-      <el-table v-else v-loading="loading" :data="filteredWarnings" stripe size="small" max-height="520">
-        <el-table-column label="处置优先级" min-width="140">
+      <el-table 
+        v-loading="loading" 
+        :data="paginatedWarnings" 
+        stripe 
+        size="small" 
+        max-height="350"
+        class="warnings-table"
+      >
+        <el-table-column label="处置优先级" min-width="130">
           <template #default="{ row }">
             <div class="priority-cell">
-              <el-tag :type="priorityType(row)" effect="plain">{{ priorityLabel(row) }}</el-tag>
-              <span v-if="row.status !== 'handled'">{{ waitingHours(row) }} 小时</span>
+              <el-tag :type="priorityType(row)" size="small" effect="plain">{{ priorityLabel(row) }}</el-tag>
+              <span v-if="row.status !== 'handled'">等待 {{ waitingHours(row) }}h</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="预警时间" min-width="180">
+        <el-table-column prop="created_at" label="预警时间" min-width="160">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="学生" min-width="190">
+        <el-table-column label="学生信息" min-width="180">
           <template #default="{ row }">
             <div class="student-cell">
-              <strong>{{ row.real_name || row.username || '未命名学生' }}</strong>
-              <span>{{ row.class_name || '未填写班级' }} · {{ row.username || '-' }}</span>
+              <strong>{{ row.real_name || row.username || '未命名' }}</strong>
+              <span>{{ row.class_name || '未分班' }} · {{ row.username }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="warning_level" label="风险等级" min-width="110">
+        <el-table-column prop="warning_level" label="风险等级" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="riskType(row.warning_level)">
+            <el-tag :type="riskType(row.warning_level)" size="small">
               {{ riskLabel(row.warning_level) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="reason" label="触发原因" min-width="260" show-overflow-tooltip>
+        <el-table-column prop="reason" label="触发依据" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">{{ warningReason(row) }}</template>
         </el-table-column>
-        <el-table-column prop="suggestion" label="系统建议" min-width="260" show-overflow-tooltip>
-          <template #default="{ row }">{{ warningSuggestion(row) }}</template>
-        </el-table-column>
-        <el-table-column label="状态" min-width="150">
+        <el-table-column label="跟进状态" width="120" align="center">
           <template #default="{ row }">
-            <div class="status-cell">
-              <el-tag :type="row.status === 'handled' ? 'success' : 'warning'">
-                {{ row.status === 'handled' ? '已标记处理' : '待处置' }}
-              </el-tag>
-              <span v-if="row.handled_at">{{ formatTime(row.handled_at) }}</span>
-            </div>
+            <el-tag :type="row.status === 'handled' ? 'success' : 'warning'" size="small">
+              {{ row.status === 'handled' ? '已处理' : '待处置' }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="176" fixed="right">
+        <el-table-column label="操作" width="160" align="center" fixed="right">
           <template #default="{ row }">
             <div class="action-cell">
-              <el-button size="small" @click="openWarningDetail(row)">查看处置</el-button>
+              <el-button size="small" @click="openWarningDetail(row)">详情</el-button>
               <el-button
                 v-if="row.status !== 'handled'"
                 type="primary"
                 size="small"
                 :loading="handlingId === row.id"
-                @click="markWarningHandled(row)"
+                @click="markWarningHandledClick(row)"
               >
-                标记
+                标记已处理
               </el-button>
             </div>
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="filteredWarnings.length"
+          layout="prev, pager, next, total"
+          size="small"
+        />
+      </div>
     </el-card>
 
+    <!-- 预警处置详情子窗口 (Dialog) -->
     <el-dialog
       v-model="detailVisible"
-      class="warning-detail-dialog"
       title="预警处置详情"
-      width="720px"
+      width="640px"
       destroy-on-close
     >
       <div v-if="selectedWarning" class="detail-content">
         <div class="detail-heading">
-          <div>
-            <span>学生</span>
-            <strong>{{ selectedWarning.real_name || selectedWarning.username || '未命名学生' }}</strong>
-            <p>{{ selectedWarning.class_name || '未填写班级' }} · {{ selectedWarning.username || '-' }}</p>
+          <div class="heading-left">
+            <span>关联学生档案</span>
+            <strong>{{ selectedWarning.real_name || selectedWarning.username || '未命名' }}</strong>
+            <p>{{ selectedWarning.class_name || '未分班' }} · 账号: {{ selectedWarning.username }}</p>
           </div>
-          <div class="detail-tags">
-            <el-tag :type="riskType(selectedWarning.warning_level)">
+          <div class="heading-right">
+            <el-tag :type="riskType(selectedWarning.warning_level)" size="large" effect="dark">
               {{ riskLabel(selectedWarning.warning_level) }}
             </el-tag>
-            <el-tag :type="selectedWarning.status === 'handled' ? 'success' : 'warning'" effect="plain">
-              {{ selectedWarning.status === 'handled' ? '已标记处理' : '待处置' }}
+            <el-tag :type="selectedWarning.status === 'handled' ? 'success' : 'warning'" size="large" effect="plain">
+              {{ selectedWarning.status === 'handled' ? '已完成标记' : '待跟进' }}
             </el-tag>
           </div>
         </div>
 
-        <dl class="detail-grid">
-          <div>
-            <dt>预警时间</dt>
-            <dd>{{ formatTime(selectedWarning.created_at) }}</dd>
-          </div>
-          <div>
-            <dt>等待时长</dt>
-            <dd>{{ selectedWarning.status === 'handled' ? '已完成状态标记' : `${waitingHours(selectedWarning)} 小时` }}</dd>
-          </div>
-          <div>
-            <dt>处理时间</dt>
-            <dd>{{ formatTime(selectedWarning.handled_at) }}</dd>
-          </div>
-          <div>
-            <dt>处置优先级</dt>
-            <dd>{{ priorityLabel(selectedWarning) }}</dd>
-          </div>
-        </dl>
+        <el-descriptions :column="2" border class="detail-desc">
+          <el-descriptions-item label="触发时间">{{ formatTime(selectedWarning.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="处理时间">{{ formatTime(selectedWarning.handled_at) }}</el-descriptions-item>
+          <el-descriptions-item label="等待时间" :span="2">
+            {{ selectedWarning.status === 'handled' ? '已标记处理' : `${waitingHours(selectedWarning)} 小时` }}
+          </el-descriptions-item>
+        </el-descriptions>
 
-        <section class="detail-section">
-          <h3>风险来源</h3>
-          <p>{{ warningReason(selectedWarning) }}</p>
-        </section>
+        <div class="detail-section">
+          <h5>触发预警原因：</h5>
+          <p class="section-text">{{ warningReason(selectedWarning) }}</p>
+        </div>
 
-        <section class="detail-section">
-          <h3>系统建议</h3>
-          <p>{{ warningSuggestion(selectedWarning) }}</p>
-        </section>
+        <div class="detail-section">
+          <h5>系统评估干预建议：</h5>
+          <p class="section-text suggestion-text">{{ warningSuggestion(selectedWarning) }}</p>
+        </div>
 
         <el-alert
-          title="当前接口只支持状态标记"
+          title="跟进声明"
           type="info"
-          show-icon
+          description="在此页“标记已处理”仅代表辅导员或心理咨询中心已完成线下排查确认或电话问询建档。更详细的干预个案分析仍需在干预系统中建立。"
           :closable="false"
-          description="本页的“已标记处理”仅表示管理员已完成一次线下确认或校内记录，并把预警状态更新为已处理。跟进记录、责任分配和干预结案仍需要后续接口接入。"
+          show-icon
         />
       </div>
 
@@ -188,9 +189,9 @@
           v-if="selectedWarning && selectedWarning.status !== 'handled'"
           type="primary"
           :loading="handlingId === selectedWarning.id"
-          @click="markWarningHandled(selectedWarning)"
+          @click="markWarningHandledClick(selectedWarning)"
         >
-          确认已完成一次跟进
+          确认完成跟进
         </el-button>
       </template>
     </el-dialog>
@@ -198,11 +199,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { RefreshRight } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
-import { listAdminWarnings, markWarningHandled as updateWarningHandled } from '@/api/warnings'
+import { listAdminWarnings, markWarningHandled } from '@/api/warnings'
 import { formatTime, riskLabel, riskType } from '@/domain/mentalHealth'
 
 const WARNING_RESPONSE_HOURS = 24
@@ -214,6 +215,9 @@ const warnings = ref([])
 const activeFilter = ref('all')
 const detailVisible = ref(false)
 const selectedWarning = ref(null)
+
+const currentPage = ref(1)
+const pageSize = ref(8)
 
 const pendingWarnings = computed(() => warnings.value.filter((item) => item.status !== 'handled'))
 const pendingCount = computed(() => pendingWarnings.value.length)
@@ -240,6 +244,16 @@ const filteredWarnings = computed(() => {
   })
 })
 
+const paginatedWarnings = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredWarnings.value.slice(start, end)
+})
+
+watch(activeFilter, () => {
+  currentPage.value = 1
+})
+
 const loadWarnings = async () => {
   loading.value = true
   loadError.value = ''
@@ -247,7 +261,7 @@ const loadWarnings = async () => {
     const res = await listAdminWarnings()
     warnings.value = res.data || []
   } catch (error) {
-    loadError.value = error?.message || '预警列表加载失败，请稍后重试。'
+    loadError.value = error?.message || '预警列表加载失败，请重试。'
   } finally {
     loading.value = false
   }
@@ -258,13 +272,13 @@ const openWarningDetail = (row) => {
   detailVisible.value = true
 }
 
-const markWarningHandled = async (row) => {
+const markWarningHandledClick = async (row) => {
   try {
     await ElMessageBox.confirm(
-      '请确认已完成一次线下沟通、电话确认或校内记录。该操作只更新预警状态，不会生成干预记录或结案记录。',
-      '标记预警状态',
+      '请确认已与该学生进行线下沟通、电话排查或建档记录。确认后此预警标记为处理状态。',
+      '确认标记预警',
       {
-        confirmButtonText: '确认标记',
+        confirmButtonText: '完成处置',
         cancelButtonText: '取消',
         type: 'warning',
       }
@@ -275,20 +289,20 @@ const markWarningHandled = async (row) => {
 
   handlingId.value = row.id
   try {
-    await updateWarningHandled(row.id)
-    ElMessage.success('已标记为处理状态')
+    await markWarningHandled(row.id)
+    ElMessage.success('跟进记录更新成功')
     detailVisible.value = false
     selectedWarning.value = null
     await loadWarnings()
   } catch (error) {
-    ElMessage.error(error?.message || '预警状态更新失败，请稍后重试。')
+    ElMessage.error(error?.message || '更新跟进记录失败')
   } finally {
     handlingId.value = null
   }
 }
 
-const warningReason = (row) => row?.reason || '系统记录到风险信号变化，当前记录未提供更详细来源。'
-const warningSuggestion = (row) => row?.suggestion || '建议结合近期识别记录、测评结果和线下沟通情况再决定后续支持方式。'
+const warningReason = (row) => row?.reason || '近期心境指标偏离预定区间'
+const warningSuggestion = (row) => row?.suggestion || '建议安排线下排查，了解其学习压力及睡眠情况。'
 
 const waitingHours = (row) => {
   if (!row?.created_at) return 0
@@ -308,12 +322,12 @@ const priorityRank = (row) => {
 }
 
 const priorityLabel = (row) => {
-  if (row.status === 'handled') return '已标记处理'
-  if (isOverdue(row) && row.warning_level === 'high') return '高风险超时'
-  if (row.warning_level === 'high') return '优先跟进'
-  if (isOverdue(row)) return '超过 24 小时'
-  if (row.warning_level === 'medium') return '建议待跟进'
-  return '常规关注'
+  if (row.status === 'handled') return '已处置'
+  if (isOverdue(row) && row.warning_level === 'high') return '高危超时'
+  if (row.warning_level === 'high') return '优先排查'
+  if (isOverdue(row)) return '预警超时'
+  if (row.warning_level === 'medium') return '建议跟进'
+  return '日常关注'
 }
 
 const priorityType = (row) => {
@@ -327,7 +341,7 @@ const isToday = (value) => {
   if (!value) return false
   const date = new Date(value)
   const today = new Date()
-  return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate()
+  return date.toDateString() === today.toDateString()
 }
 
 onMounted(loadWarnings)
@@ -335,8 +349,10 @@ onMounted(loadWarnings)
 
 <style scoped>
 .warning-workflow {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  height: 100%;
 }
 
 .state-alert {
@@ -350,29 +366,30 @@ onMounted(loadWarnings)
 }
 
 .summary-card {
-  min-height: 108px;
+  height: 112px;
 }
 
-.summary-card span {
+.sum-label {
   display: block;
   color: var(--mh-muted);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 11.5px;
+  font-weight: 600;
 }
 
-.summary-card strong {
+.sum-val {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--mh-ink);
-  font-size: 28px;
-  line-height: 1.2;
+  font-size: 24px;
+  font-weight: 850;
+  line-height: 1.25;
 }
 
-.summary-card p {
-  margin: 10px 0 0;
+.sum-desc {
+  margin: 8px 0 0;
   color: var(--mh-muted);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 11.5px;
+  line-height: 1.5;
 }
 
 .risk-high {
@@ -384,46 +401,46 @@ onMounted(loadWarnings)
 }
 
 .warning-table-card {
-  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .table-toolbar {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  align-items: center;
 }
 
-.table-toolbar strong,
-.table-toolbar small {
-  display: block;
+.toolbar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.table-toolbar strong {
+.card-title {
+  font-weight: 700;
   color: var(--mh-ink);
 }
 
-.table-toolbar small {
-  margin-top: 4px;
+.card-desc {
+  font-size: 11px;
   color: var(--mh-muted);
-  font-size: 12px;
 }
 
-.priority-cell,
-.status-cell,
-.student-cell,
-.action-cell {
+.warnings-table {
+  margin-top: 4px;
+}
+
+.priority-cell, .student-cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
-.priority-cell span,
-.status-cell span,
-.student-cell span {
+.priority-cell span, .student-cell span {
+  font-size: 11px;
   color: var(--mh-muted);
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .student-cell strong {
@@ -431,105 +448,90 @@ onMounted(loadWarnings)
 }
 
 .action-cell {
-  flex-direction: row;
-  flex-wrap: wrap;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
 }
 
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+/* Detail dialogue styling */
 .detail-content {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
 .detail-heading {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 14px;
+  align-items: start;
   border-bottom: 1px solid var(--mh-line);
+  padding-bottom: 12px;
 }
 
-.detail-heading span,
-.detail-heading p,
-.detail-grid dt {
+.heading-left span {
+  font-size: 11px;
   color: var(--mh-muted);
-  font-size: 13px;
+  font-weight: 600;
 }
 
-.detail-heading strong {
+.heading-left strong {
   display: block;
-  margin-top: 4px;
+  font-size: 20px;
   color: var(--mh-ink);
-  font-size: 22px;
+  margin-top: 4px;
 }
 
-.detail-heading p {
-  margin: 6px 0 0;
+.heading-left p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--mh-muted);
 }
 
-.detail-tags {
+.heading-right {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 8px;
 }
 
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
-}
-
-.detail-grid div {
-  padding: 12px;
-  border: 1px solid var(--mh-line);
-  border-radius: var(--mh-radius-md);
-  background: var(--mh-surface-muted);
-}
-
-.detail-grid dt,
-.detail-grid dd {
-  margin: 0;
-}
-
-.detail-grid dd {
-  margin-top: 6px;
-  color: var(--mh-ink);
+.detail-section h5 {
+  margin: 0 0 6px;
+  font-size: 13px;
   font-weight: 800;
-}
-
-.detail-section h3 {
-  margin: 0 0 8px;
   color: var(--mh-ink);
-  font-size: 15px;
 }
 
-.detail-section p {
+.section-text {
   margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
   color: var(--mh-text);
-  line-height: 1.7;
+  background: var(--mh-surface-muted);
+  border: 1px solid var(--mh-line);
+  padding: 10px 12px;
+  border-radius: var(--mh-radius-md);
 }
 
-@media (max-width: 1080px) {
+.suggestion-text {
+  font-weight: 600;
+  color: var(--mh-primary-strong);
+  border-color: var(--mh-primary-soft);
+}
+
+@media (max-width: 800px) {
   .triage-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-@media (max-width: 680px) {
-  .triage-summary,
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .table-toolbar,
-  .detail-heading {
-    align-items: flex-start;
+  .table-toolbar, .detail-heading {
     flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
-
-  .detail-tags {
+  .heading-right {
     justify-content: flex-start;
   }
 }

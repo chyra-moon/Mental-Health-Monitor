@@ -1,8 +1,8 @@
 <template>
   <div class="page students-page">
-    <PageHeader title="学生档案" description="查看学生入档状态、班级归属和账号启用情况">
+    <PageHeader title="学生档案" description="查看和检索在册学生的个人资料、班级归属和账号状态">
       <template #actions>
-        <el-button :icon="RefreshRight" type="primary" @click="loadStudents" :loading="loading">刷新</el-button>
+        <el-button :icon="RefreshRight" type="primary" @click="loadData" :loading="loading">刷新</el-button>
       </template>
     </PageHeader>
 
@@ -16,67 +16,160 @@
     />
 
     <el-card class="students-table-card" shadow="never">
-      <el-empty v-if="!loading && students.length === 0" description="暂无学生数据" />
-      <el-table v-else v-loading="loading" :data="students" stripe size="small" max-height="520" aria-label="学生档案列表">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="username" label="用户名" min-width="140" />
-        <el-table-column prop="real_name" label="姓名" min-width="120">
+      <el-table
+        v-loading="loading"
+        :data="paginatedStudents"
+        stripe
+        size="small"
+        max-height="450"
+        @sort-change="handleSortChange"
+        class="students-table"
+      >
+        <el-table-column prop="id" label="ID" width="90" sortable="custom" align="center" />
+        <el-table-column prop="username" label="用户名" min-width="140" sortable="custom" />
+        <el-table-column prop="real_name" label="姓名" min-width="120" sortable="custom">
           <template #default="{ row }">{{ row.real_name || '未入档' }}</template>
         </el-table-column>
-        <el-table-column prop="gender" label="性别" min-width="100">
+        <el-table-column prop="gender" label="性别" min-width="90" sortable="custom" align="center">
           <template #default="{ row }">{{ row.gender || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="class_name" label="班级" min-width="140">
+        
+        <!-- Interactive header class selection filter -->
+        <el-table-column prop="class_name" min-width="160">
+          <template #header>
+            <el-select
+              v-model="selectedClassFilter"
+              size="small"
+              placeholder="全校班级筛选"
+              clearable
+              class="header-filter-select"
+            >
+              <el-option
+                v-for="item in classes"
+                :key="item.id"
+                :label="item.name"
+                :value="item.name"
+              />
+            </el-select>
+          </template>
           <template #default="{ row }">{{ row.class_name || '未分班' }}</template>
         </el-table-column>
-        <el-table-column prop="status" label="账号状态" min-width="110">
+
+        <el-table-column prop="status" label="账号状态" min-width="110" sortable="custom" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-              {{ row.status === 1 ? '正常' : '禁用' }}
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+              {{ row.status === 1 ? '正常启用' : '已禁用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="注册时间" min-width="180">
+        
+        <el-table-column prop="created_at" label="注册时间" min-width="170" sortable="custom">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="filteredStudents.length"
+          layout="prev, pager, next, total"
+          size="small"
+        />
+      </div>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { RefreshRight } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { listStudents } from '@/api/users'
+import { listAdminClasses } from '@/api/classes'
 import { formatTime } from '@/domain/mentalHealth'
 
 const loading = ref(false)
 const loadError = ref('')
 const students = ref([])
+const classes = ref([])
+const selectedClassFilter = ref('')
 
-const loadStudents = async () => {
+const currentPage = ref(1)
+const pageSize = ref(10)
+const sortProp = ref('')
+const sortOrder = ref('')
+
+const filteredStudents = computed(() => {
+  let list = [...students.value]
+  
+  // Apply class filter
+  if (selectedClassFilter.value) {
+    list = list.filter(student => student.class_name === selectedClassFilter.value)
+  }
+
+  // Apply sorting
+  if (sortProp.value && sortOrder.value) {
+    const prop = sortProp.value
+    const order = sortOrder.value === 'ascending' ? 1 : -1
+    
+    list.sort((a, b) => {
+      let valA = a[prop]
+      let valB = b[prop]
+      
+      // Fallback for nulls
+      if (valA === null || valA === undefined) valA = ''
+      if (valB === null || valB === undefined) valB = ''
+      
+      if (typeof valA === 'string') {
+        return valA.localeCompare(valB) * order
+      }
+      return (valA - valB) * order
+    })
+  }
+
+  return list
+})
+
+const paginatedStudents = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredStudents.value.slice(start, end)
+})
+
+async function loadData() {
   loading.value = true
   loadError.value = ''
   try {
-    const res = await listStudents()
-    students.value = res.data || []
+    const [studentsRes, classesRes] = await Promise.all([
+      listStudents(),
+      listAdminClasses()
+    ])
+    students.value = studentsRes.data || []
+    classes.value = classesRes.data || []
+    currentPage.value = 1
   } catch (error) {
-    loadError.value = error?.message || '学生列表加载失败，请稍后重试。'
+    loadError.value = error?.message || '加载学生档案数据失败，请重试。'
   } finally {
     loading.value = false
   }
 }
 
-onMounted(loadStudents)
+function handleSortChange({ prop, order }) {
+  sortProp.value = prop
+  sortOrder.value = order
+  currentPage.value = 1
+}
+
+onMounted(loadData)
 </script>
 
 <style scoped>
 .students-page {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  max-width: 100%;
-  overflow-x: hidden;
+  height: 100%;
 }
 
 .state-alert {
@@ -84,6 +177,23 @@ onMounted(loadStudents)
 }
 
 .students-table-card {
-  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.students-table {
+  margin-top: 4px;
+}
+
+.header-filter-select {
+  width: 100%;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 </style>

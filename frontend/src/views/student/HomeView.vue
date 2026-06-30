@@ -1,9 +1,9 @@
 <template>
   <div class="page student-workspace">
-    <PageHeader title="心理工作台" description="把情绪识别、心理测评、趋势观察和风险提醒放在同一处查看">
+    <PageHeader title="心理工作台" description="综合查看近期情绪识别状态、心理自测记录与校内干预跟进提醒">
       <template #actions>
-        <el-button @click="loadData" :loading="loading">刷新</el-button>
-        <el-button type="primary" @click="router.push('/student/questionnaire')">进行心理测评</el-button>
+        <el-button :icon="Refresh" @click="loadData" :loading="loading">刷新工作台</el-button>
+        <el-button type="primary" :icon="Document" @click="router.push('/student/questionnaire')">进行心理测评</el-button>
       </template>
     </PageHeader>
 
@@ -16,46 +16,57 @@
       :closable="false"
     />
 
+    <!-- Layer 1: Stat cards -->
     <div class="summary-grid" v-loading="loading">
       <el-card class="summary-card" shadow="never">
-        <span>最近识别</span>
-        <strong>{{ latestRecord ? emotionLabel(latestRecord.dominant_emotion) : '未记录' }}</strong>
-        <p>
+        <span class="card-label">最近识别情绪</span>
+        <strong class="card-value">{{ latestRecord ? emotionLabel(latestRecord.dominant_emotion) : '未记录' }}</strong>
+        <p class="card-desc">
           {{
             latestRecord
-              ? `${formatTime(latestRecord.created_at)}，${riskLabel(latestRecord.risk_level)}`
-              : '可先完成一次情绪识别，作为后续趋势观察参考。'
+              ? `${formatTime(latestRecord.created_at)} · ${riskLabel(latestRecord.risk_level)}`
+              : '建议每周至少采集一次情绪数据'
           }}
         </p>
       </el-card>
+      
       <el-card class="summary-card" shadow="never">
-        <span>当前关注提醒</span>
-        <strong :class="latestWarning ? 'risk-' + latestWarning.level : 'risk-low'">
-          {{ latestWarning ? riskLabel(latestWarning.level) : '暂无待关注提醒' }}
+        <span class="card-label">待跟进关注提醒</span>
+        <strong class="card-value" :class="latestWarning ? 'risk-' + latestWarning.level : 'risk-low'">
+          {{ latestWarning ? riskLabel(latestWarning.level) : '暂无待处理关注' }}
         </strong>
-        <p>{{ latestWarningSummary }}</p>
+        <p class="card-desc">{{ latestWarningSummary }}</p>
       </el-card>
+      
       <el-card class="summary-card" shadow="never">
-        <span>近 7 天趋势</span>
-        <strong>{{ totalTrendCount }} 次记录</strong>
-        <p>负向情绪占比 {{ negativePercent }}%，覆盖 {{ trendDayCount }} 天。</p>
+        <span class="card-label">近 7 天累计评测</span>
+        <strong class="card-value">{{ totalTrendCount }} 次</strong>
+        <p class="card-desc">负向情绪频次占比 {{ negativePercent }}%，覆盖 {{ trendDayCount }} 天。</p>
       </el-card>
     </div>
 
+    <!-- Layer 2: Core Next Step Guidance -->
     <el-card class="next-step-card" shadow="never">
-      <template #header>下一步建议</template>
-      <div class="next-step">
-        <p>{{ nextStepMessage }}</p>
+      <div class="next-step-box">
+        <div class="advice-content">
+          <el-icon class="advice-icon"><Opportunity /></el-icon>
+          <div class="advice-text">
+            <h5>下一步自测与调适建议：</h5>
+            <p>{{ nextStepMessage }}</p>
+          </div>
+        </div>
         <div class="next-actions">
           <el-button type="primary" @click="router.push(primaryAction.path)">
             {{ primaryAction.label }}
           </el-button>
-          <el-button @click="router.push('/student/trend')">查看趋势观察</el-button>
+          <el-button @click="router.push('/student/trend')">查看趋势图表</el-button>
         </div>
       </div>
     </el-card>
 
+    <!-- Layer 3: Two Column detail preview (Fixed height) -->
     <div class="workspace-grid">
+      <!-- Recent Records -->
       <el-card class="quick-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-title">
@@ -63,66 +74,132 @@
             <el-button link type="primary" @click="router.push('/student/records')">全部记录</el-button>
           </div>
         </template>
-        <el-empty v-if="records.length === 0" description="暂无识别记录" />
+        <el-empty v-if="records.length === 0" description="暂无情绪识别记录" />
         <div v-else class="record-list">
-          <article v-for="record in records.slice(0, 5)" :key="record.id" class="record-item">
-            <div>
+          <article 
+            v-for="record in records.slice(0, 4)" 
+            :key="record.id" 
+            class="record-item"
+            @click="viewRecordDetail(record)"
+          >
+            <div class="item-info">
               <strong>{{ emotionLabel(record.dominant_emotion) }}</strong>
               <span>{{ formatTime(record.created_at) }}</span>
             </div>
-            <el-tag :type="riskType(record.risk_level)" effect="plain">{{ riskLabel(record.risk_level) }}</el-tag>
+            <el-tag :type="riskType(record.risk_level)" size="small" effect="plain">
+              {{ riskLabel(record.risk_level) }}
+            </el-tag>
           </article>
         </div>
       </el-card>
 
+      <!-- Warnings -->
       <el-card class="quick-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-title">
-            <span>关注提醒</span>
-            <small>系统根据记录生成，最终以线下沟通为准</small>
+            <span>关注提醒通知</span>
+            <small>以线下沟通结果为准</small>
           </div>
         </template>
-        <el-empty v-if="warnings.length === 0" description="暂无新的关注提醒" />
+        <el-empty v-if="warnings.length === 0" description="暂无关注提醒通知" />
         <div v-else class="warning-list">
-          <article v-for="warning in warnings.slice(0, 4)" :key="warning.id" class="warning-item">
+          <article 
+            v-for="warning in warnings.slice(0, 3)" 
+            :key="warning.id" 
+            class="warning-item"
+            @click="viewWarningDetail(warning)"
+          >
             <div class="warning-heading">
-              <el-tag :type="riskType(warning.level)" effect="plain">{{ riskLabel(warning.level) }}</el-tag>
-              <span>{{ warningStatusText(warning) }}</span>
+              <el-tag :type="riskType(warning.level)" size="small">{{ riskLabel(warning.level) }}</el-tag>
+              <span class="warning-status">{{ warningStatusText(warning) }}</span>
             </div>
-            <p>{{ warningSourceText(warning) }}</p>
-            <small>{{ warningAdviceText(warning) }}</small>
-            <time>{{ formatTime(warning.created_at) }}</time>
+            <p class="warning-reason">{{ warningSourceText(warning) }}</p>
+            <time class="warning-time">{{ formatTime(warning.created_at) }}</time>
           </article>
         </div>
       </el-card>
     </div>
 
-    <el-card class="trend-panel" shadow="never" v-loading="loading">
-      <template #header>
-        <div class="section-title">
-          <span>近 7 天情绪观察</span>
-          <small>用于观察变化，不用于单次判断心理状态</small>
-        </div>
-      </template>
-      <el-empty v-if="trendRows.length === 0" description="暂无趋势数据" />
-      <div v-else class="trend-list" aria-label="近 7 天情绪记录列表">
-        <div v-for="row in trendRows" :key="row.date" class="trend-row">
-          <span>{{ row.date }}</span>
-          <div class="trend-track">
-            <span class="negative" :style="{ width: trendWidth(row.negative) }"></span>
-            <span class="neutral" :style="{ width: trendWidth(row.neutral) }"></span>
-            <span class="positive" :style="{ width: trendWidth(row.positive) }"></span>
+    <!-- 记录详情子窗口 (Dialog) -->
+    <el-dialog
+      v-model="recordDialogVisible"
+      title="情绪识别记录详情"
+      width="540px"
+      destroy-on-close
+    >
+      <div v-if="selectedRecord" class="detail-modal-body">
+        <div class="modal-summary">
+          <div class="sum-cell">
+            <span>情绪类别</span>
+            <strong>{{ emotionLabel(selectedRecord.dominant_emotion) }}</strong>
           </div>
-          <strong>{{ row.total }}</strong>
+          <div class="sum-cell">
+            <span>置信度</span>
+            <strong>{{ formatPercent(selectedRecord.confidence) }}</strong>
+          </div>
+          <div class="sum-cell">
+            <span>评估风险</span>
+            <el-tag :type="riskType(selectedRecord.risk_level)">
+              {{ riskLabel(selectedRecord.risk_level) }}
+            </el-tag>
+          </div>
+        </div>
+
+        <el-descriptions :column="1" border class="modal-desc">
+          <el-descriptions-item label="记录时间">{{ formatTime(selectedRecord.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="来源类别">{{ selectedRecord.source_label }}</el-descriptions-item>
+          <template v-if="selectedRecord.source_type === 'video'">
+            <el-descriptions-item label="视频文件"><code>{{ selectedRecord.video_filename }}</code></el-descriptions-item>
+            <el-descriptions-item label="负向情绪占比">{{ formatPercent(selectedRecord.negative_ratio) }}</el-descriptions-item>
+          </template>
+        </el-descriptions>
+
+        <div class="modal-advice">
+          <h5>评估报告与干预指导建议：</h5>
+          <p>{{ selectedRecord.suggestion || '建议保持正常的心态，多留意日常的情绪变化。' }}</p>
         </div>
       </div>
-    </el-card>
+    </el-dialog>
+
+    <!-- 预警详情子窗口 (Dialog) -->
+    <el-dialog
+      v-model="warningDialogVisible"
+      title="心理关注提醒详情"
+      width="500px"
+      destroy-on-close
+    >
+      <div v-if="selectedWarning" class="detail-modal-body">
+        <div class="modal-summary">
+          <div class="sum-cell">
+            <span>预警等级</span>
+            <el-tag :type="riskType(selectedWarning.level)" size="large" effect="dark">
+              {{ riskLabel(selectedWarning.level) }}
+            </el-tag>
+          </div>
+          <div class="sum-cell">
+            <span>跟进状态</span>
+            <strong>{{ warningStatusText(selectedWarning) }}</strong>
+          </div>
+        </div>
+
+        <el-descriptions :column="1" border class="modal-desc">
+          <el-descriptions-item label="触发时间">{{ formatTime(selectedWarning.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="评估依据">{{ warningSourceText(selectedWarning) }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div class="modal-advice">
+          <h5>校内调适干预指导建议：</h5>
+          <p>{{ warningAdviceText(selectedWarning) }}</p>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Refresh, Document, Opportunity } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { listMyRecords } from '@/api/records'
 import { getStudentTrend } from '@/api/stats'
@@ -136,13 +213,19 @@ const records = ref([])
 const warnings = ref([])
 const trend = ref([])
 
+const recordDialogVisible = ref(false)
+const selectedRecord = ref(null)
+
+const warningDialogVisible = ref(false)
+const selectedWarning = ref(null)
+
 const positiveEmotions = new Set(['happy', 'surprise'])
 const negativeEmotions = NEGATIVE_EMOTIONS
 
 const latestRecord = computed(() => records.value[0] || null)
 const latestWarning = computed(() => warnings.value.find((item) => item.status !== 'handled') || warnings.value[0] || null)
 const latestWarningSummary = computed(() =>
-  latestWarning.value ? warningSourceText(latestWarning.value) : '没有新的关注提醒，建议保持规律记录和自我观察。'
+  latestWarning.value ? warningSourceText(latestWarning.value) : '近期无待处置的负向心理波动提醒。'
 )
 const totalTrendCount = computed(() => trend.value.reduce((sum, item) => sum + Number(item.count || 0), 0))
 const negativeTrendCount = computed(() =>
@@ -156,40 +239,23 @@ const negativePercent = computed(() => {
 })
 const trendDayCount = computed(() => new Set(trend.value.map((item) => item.date)).size)
 
-const trendRows = computed(() => {
-  const rows = new Map()
-  trend.value.forEach((item) => {
-    if (!rows.has(item.date)) {
-      rows.set(item.date, { date: item.date, positive: 0, negative: 0, neutral: 0, total: 0 })
-    }
-    const row = rows.get(item.date)
-    const count = Number(item.count || 0)
-    if (negativeEmotions.has(item.emotion)) row.negative += count
-    else if (positiveEmotions.has(item.emotion)) row.positive += count
-    else row.neutral += count
-    row.total += count
-  })
-  return [...rows.values()].sort((a, b) => new Date(a.date) - new Date(b.date))
-})
-const maxTrendTotal = computed(() => Math.max(1, ...trendRows.value.map((row) => row.total)))
-
 const primaryAction = computed(() => {
-  if (latestWarning.value?.level === 'high') return { label: '查看最近记录', path: '/student/records' }
+  if (latestWarning.value?.level === 'high') return { label: '查看全部记录', path: '/student/records' }
   if (!latestRecord.value) return { label: '开始情绪识别', path: '/student/emotion' }
   return { label: '进行心理测评', path: '/student/questionnaire' }
 })
 
 const nextStepMessage = computed(() => {
   if (latestWarning.value?.level === 'high') {
-    return '当前存在重点关注提醒，建议优先联系辅导员或校心理中心，由线下支持人员一起判断下一步。'
+    return '当前系统监测到高频/重度波动，建议您优先联系辅导员或心理咨询中心的老师，获取线下专业指导。'
   }
   if (latestWarning.value?.level === 'medium') {
-    return '当前有需要关注的风险信号，建议完成一次心理测评，并结合近期记录决定是否联系校内支持人员。'
+    return '目前存在中度情绪预警，建议您进行一次心理测评自测，有助于更精细地了解状态。'
   }
   if (!latestRecord.value) {
-    return '还没有识别记录。可以先完成一次情绪识别，再进行测评，后续趋势会更有参考价值。'
+    return '您还没有进行情绪自测。请先进行一次情绪识别，有助于我们提供日常心理关怀。'
   }
-  return '建议保持规律记录；当近几天负向情绪占比升高时，可完成测评并主动寻求校内支持。'
+  return '目前心境指标正常。建议您保持健康作息，并坚持每周进行情绪自测与心理记录。'
 })
 
 const loadData = async () => {
@@ -205,26 +271,37 @@ const loadData = async () => {
     warnings.value = warningsRes.data || []
     trend.value = trendRes.data || []
   } catch (error) {
-    loadError.value = error?.message || '学生工作台数据加载失败，请稍后重试。'
+    loadError.value = error?.message || '加载工作台数据失败，请重试。'
   } finally {
     loading.value = false
   }
 }
 
-const warningSourceText = (warning) => warning?.reason || '系统记录到近期风险信号变化，建议结合自己的实际状态观察。'
-const warningStatusText = (warning) => (warning?.status === 'handled' ? '学校已标记跟进' : '建议待跟进')
+function viewRecordDetail(record) {
+  selectedRecord.value = record
+  recordDialogVisible.value = true
+}
+
+function viewWarningDetail(warning) {
+  selectedWarning.value = warning
+  warningDialogVisible.value = true
+}
+
+const warningSourceText = (warning) => warning?.reason || '系统自动评估生成的待关注情绪预警。'
+const warningStatusText = (warning) => (warning?.status === 'handled' ? '已完成教师跟进' : '待处理/建议跟进')
 const warningAdviceText = (warning) => {
   if (warning?.level === 'high') {
-    return '如近期持续不适或影响学习生活，请优先联系辅导员或校心理中心。'
+    return '根据预警触发原因，目前您正经历较为显著的情绪负荷。请优先寻找辅导员、班主任或拨打校内 24h 心理支持热线获取一对一帮助。'
   }
   if (warning?.level === 'medium') {
-    return '可以先完成一次心理测评，并留意近几天情绪和睡眠变化。'
+    return '建议您适度减轻学习压力，可以进行适量的户外慢跑或深呼吸练习。如果情绪波动持续超过 3 天，建议预约心理中心的心理辅导。'
   }
-  return '保持规律记录即可；如状态变化明显，可主动寻求校内支持。'
+  return '保持良好的生活习惯和自测频度。您的整体倾向比较平稳，无需过度担忧。'
 }
-const trendWidth = (value) => {
-  const count = Number(value || 0)
-  return count ? `${Math.max(4, (count / maxTrendTotal.value) * 100)}%` : '0%'
+
+const formatPercent = (val) => {
+  if (val === undefined || val === null) return '-'
+  return `${(Number(val) * 100).toFixed(1)}%`
 }
 
 onMounted(loadData)
@@ -232,8 +309,10 @@ onMounted(loadData)
 
 <style scoped>
 .student-workspace {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  height: 100%;
 }
 
 .state-alert {
@@ -247,29 +326,30 @@ onMounted(loadData)
 }
 
 .summary-card {
-  min-height: 108px;
+  height: 112px;
 }
 
-.summary-card span {
+.card-label {
   display: block;
   color: var(--mh-muted);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 11.5px;
+  font-weight: 600;
 }
 
-.summary-card strong {
+.card-value {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--mh-ink);
-  font-size: 24px;
-  line-height: 1.25;
+  font-size: 22px;
+  font-weight: 850;
+  line-height: 1.2;
 }
 
-.summary-card p {
-  margin: 10px 0 0;
+.card-desc {
+  margin: 8px 0 0;
   color: var(--mh-muted);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 11.5px;
+  line-height: 1.5;
 }
 
 .risk-low {
@@ -284,206 +364,222 @@ onMounted(loadData)
   color: var(--mh-danger) !important;
 }
 
-.next-step {
+.next-step-card {
+  background: var(--mh-surface) !important;
+}
+
+.next-step-box {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
-.next-step p {
-  max-width: 760px;
-  margin: 0;
-  color: var(--mh-text);
-  line-height: 1.7;
-}
-
-.next-actions {
+.advice-content {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.workspace-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-}
-
-.section-title {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: start;
   gap: 12px;
 }
 
-.section-title span {
-  color: var(--mh-ink);
+.advice-icon {
+  font-size: 22px;
+  color: var(--mh-primary);
+  margin-top: 2px;
+  flex: none;
+}
+
+.advice-text h5 {
+  margin: 0 0 4px;
+  font-size: 13.5px;
   font-weight: 800;
-}
-
-.section-title small {
-  color: var(--mh-muted);
-  font-size: 12px;
-}
-
-.record-list,
-.warning-list,
-.trend-list {
-  display: grid;
-  gap: 10px;
-}
-
-.record-item,
-.warning-item {
-  padding: 12px;
-  border: 1px solid var(--mh-line);
-  border-radius: var(--mh-radius-md);
-  background: var(--mh-surface);
-}
-
-.record-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.record-item strong,
-.record-item span {
-  display: block;
-}
-
-.record-item strong {
   color: var(--mh-ink);
 }
 
-.record-item span {
-  margin-top: 4px;
-  color: var(--mh-muted);
-  font-size: 13px;
-}
-
-.warning-heading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.warning-heading span {
-  color: var(--mh-muted);
-  font-size: 13px;
-}
-
-.warning-item p {
-  margin: 10px 0 8px;
+.advice-text p {
+  margin: 0;
+  font-size: 12.5px;
   color: var(--mh-text);
   line-height: 1.6;
 }
 
-.warning-item small {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--mh-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.warning-item time {
-  color: var(--mh-muted);
-  font-size: 12px;
-}
-
-.trend-row {
-  display: grid;
-  grid-template-columns: 84px minmax(0, 1fr) 40px;
-  align-items: center;
-  gap: 10px;
-  color: var(--mh-text);
-  font-size: 13px;
-}
-
-.trend-track {
+.next-actions {
   display: flex;
-  height: 12px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--mh-surface-muted);
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.trend-track .negative {
-  background: var(--mh-warning);
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  flex: 1;
 }
 
-.trend-track .neutral {
-  background: var(--mh-info);
+.quick-panel {
+  height: 280px;
 }
 
-.trend-track .positive {
-  background: var(--mh-success);
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.trend-row strong {
+.section-title span {
+  font-weight: 700;
   color: var(--mh-ink);
-  text-align: right;
 }
 
-@media (max-width: 720px) {
-  .summary-grid,
-  .workspace-grid {
+.section-title small {
+  color: var(--mh-muted);
+  font-size: 11px;
+}
+
+.record-list, .warning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.record-item, .warning-item {
+  padding: 10px 12px;
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius-md);
+  background: var(--mh-surface);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.record-item:hover, .warning-item:hover {
+  border-color: var(--mh-primary);
+  background-color: var(--mh-primary-soft);
+  transform: translateY(-1px);
+}
+
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item-info strong {
+  font-size: 13px;
+  color: var(--mh-ink);
+}
+
+.item-info span {
+  font-size: 11px;
+  color: var(--mh-muted);
+}
+
+.warning-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.warning-status {
+  font-size: 11px;
+  color: var(--mh-muted);
+  font-weight: 600;
+}
+
+.warning-reason {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--mh-text);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.warning-time {
+  font-size: 11px;
+  color: var(--mh-muted);
+}
+
+/* Detail Modals */
+.detail-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  background: var(--mh-surface-muted);
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius-md);
+  padding: 12px;
+  text-align: center;
+}
+
+.modal-summary .sum-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.modal-summary .sum-cell span {
+  font-size: 11px;
+  color: var(--mh-muted);
+  font-weight: 600;
+}
+
+.modal-summary .sum-cell strong {
+  font-size: 16px;
+  color: var(--mh-ink);
+}
+
+.modal-desc {
+  margin-top: 4px;
+}
+
+.modal-advice {
+  background: var(--mh-surface-muted);
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius-md);
+  padding: 12px 14px;
+}
+
+.modal-advice h5 {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--mh-ink);
+}
+
+.modal-advice p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--mh-text);
+}
+
+@media (max-width: 800px) {
+  .summary-grid, .workspace-grid {
     grid-template-columns: 1fr;
   }
-
-  .next-step {
-    align-items: flex-start;
-    flex-direction: column;
+  .quick-panel {
+    height: auto;
   }
-
+  .next-step-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
   .next-actions {
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 560px) {
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .summary-card {
-    min-height: 96px;
-  }
-
-  .summary-card strong {
-    font-size: 20px;
-  }
-
-  .summary-card p {
-    font-size: 12px;
-    line-height: 1.45;
-  }
-
-  .workspace-grid {
-    max-height: 520px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .quick-panel :deep(.el-card__body),
-  .trend-panel :deep(.el-card__body) {
-    max-height: 220px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .record-item,
-  .section-title {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .trend-row {
-    grid-template-columns: 72px minmax(0, 1fr) 32px;
+    justify-content: flex-end;
   }
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div class="page admin-risk-page">
-    <PageHeader title="风险工作台" description="先处理待处置高风险、超时预警和近期波动集中的班级">
+    <PageHeader title="风险工作台" description="综合研判校内高风险预警状态、各班级风险态势及心理会话波动特征">
       <template #actions>
         <el-button :icon="RefreshRight" @click="loadData" :loading="loading">刷新</el-button>
         <el-button type="primary" @click="router.push('/admin/warnings')">进入预警处置</el-button>
@@ -16,6 +16,7 @@
       :closable="false"
     />
 
+    <!-- Layer 1: Stat cards -->
     <div class="triage-grid" v-loading="loading">
       <el-card v-for="item in triageMetrics" :key="item.label" class="triage-card" shadow="never">
         <span class="metric-label">{{ item.label }}</span>
@@ -24,66 +25,74 @@
       </el-card>
     </div>
 
+    <!-- Layer 2: Priority Queue and Class Risk (Fixed height boxes) -->
     <div class="command-grid">
+      <!-- Priority queue -->
       <el-card class="priority-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-heading">
-            <span>待处置优先级</span>
-            <small>按风险等级和等待时间排序</small>
+            <span>待处置优先级队列</span>
+            <small>优先展示高风险及超时未处理记录</small>
           </div>
         </template>
-        <el-empty v-if="!priorityQueue.length" description="当前没有待处置预警" />
+        <el-empty v-if="!priorityQueue.length" description="当前无待处置预警" />
         <div v-else class="warning-list">
-          <article v-for="warning in priorityQueue" :key="warning.id" class="warning-item">
+          <article 
+            v-for="warning in priorityQueue" 
+            :key="warning.id" 
+            class="warning-item"
+            @click="openTriageDialog(warning)"
+          >
             <div class="warning-main">
-              <el-tag :type="riskType(warning.warning_level)" effect="plain">
+              <el-tag :type="riskType(warning.warning_level)" size="small" effect="plain">
                 {{ riskLabel(warning.warning_level) }}
               </el-tag>
-              <strong>{{ warning.real_name || warning.username || '未登记姓名学生' }}</strong>
-              <span>{{ warning.class_name || '未分班' }}</span>
+              <strong>{{ warning.real_name || warning.username || '未入档学生' }}</strong>
+              <span class="class-text">{{ warning.class_name || '未分配班级' }}</span>
             </div>
-            <p>{{ warning.reason || '近期风险信号发生变化' }}</p>
+            <p class="warning-reason">{{ warning.reason || '近期风险信号波动' }}</p>
             <div class="warning-meta">
-              <span>等待 {{ waitingHours(warning.created_at) }} 小时</span>
+              <span>等待时间: {{ waitingHours(warning.created_at) }} 小时</span>
               <span>{{ formatTime(warning.created_at) }}</span>
             </div>
           </article>
         </div>
       </el-card>
 
+      <!-- Class Risk status -->
       <el-card class="class-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-heading">
-            <span>班级风险态势</span>
-            <small>来自待处置预警聚合</small>
+            <span>班级风险态势分布</span>
+            <small>基于各班待处理风险记录聚合</small>
           </div>
         </template>
         <el-empty v-if="!classRiskRows.length" description="暂无待关注班级" />
         <div v-else class="class-list">
           <div v-for="item in classRiskRows" :key="item.className" class="class-row">
-            <div>
+            <div class="class-info">
               <strong>{{ item.className }}</strong>
-              <span>{{ item.studentCount }} 名学生有待处置记录</span>
+              <span>{{ item.studentCount }} 名学生待跟进</span>
             </div>
             <div class="class-counts">
-              <span class="risk-high">高 {{ item.high }}</span>
-              <span class="risk-medium">中 {{ item.medium }}</span>
+              <el-tag type="danger" size="small" effect="dark" v-if="item.high > 0">高危 {{ item.high }}</el-tag>
+              <el-tag type="warning" size="small" effect="plain" v-if="item.medium > 0">中度 {{ item.medium }}</el-tag>
             </div>
           </div>
         </div>
       </el-card>
     </div>
 
+    <!-- Layer 3: Trend & Emotion distribution -->
     <div class="insight-grid">
       <el-card class="trend-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-heading">
-            <span>近 7 天风险信号</span>
-            <small>回答风险是否升高</small>
+            <span>近 7 天预警走势</span>
           </div>
         </template>
-        <el-empty v-if="!riskTrendRows.length" description="暂无风险趋势数据" />
-        <div v-else class="trend-list" aria-label="近 7 天风险信号列表">
+        <el-empty v-if="!riskTrendRows.length" description="暂无预警趋势数据" />
+        <div v-else class="trend-list">
           <div v-for="row in riskTrendRows" :key="row.date" class="trend-row">
             <span class="trend-date">{{ row.date }}</span>
             <div class="trend-track">
@@ -98,16 +107,16 @@
       <el-card class="emotion-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-heading">
-            <span>识别情绪分布</span>
-            <small>负向情绪占比 {{ negativeEmotionPercent }}%</small>
+            <span>全校识别情绪分布</span>
+            <small>负向占比 {{ negativeEmotionPercent }}%</small>
           </div>
         </template>
         <el-empty v-if="!distributionRows.length" description="暂无情绪分布数据" />
         <div v-else class="emotion-list">
-          <div v-for="row in distributionRows" :key="row.emotion" class="emotion-row">
+          <div v-for="row in distributionRows.slice(0, 5)" :key="row.emotion" class="emotion-row">
             <span>{{ emotionLabel(row.emotion) }}</span>
             <div class="emotion-track">
-              <span :style="{ width: emotionWidth(row.count) }"></span>
+              <span :style="{ width: emotionWidth(row.count), background: emotionColor(row.emotion) }"></span>
             </div>
             <strong>{{ row.count }}</strong>
           </div>
@@ -115,6 +124,54 @@
       </el-card>
     </div>
 
+    <!-- 预警处置子窗口 (Dialog) -->
+    <el-dialog
+      v-model="triageVisible"
+      title="预警跟进处置"
+      width="580px"
+      destroy-on-close
+    >
+      <div v-if="selectedWarning" class="triage-dialog-content">
+        <el-descriptions :column="2" border class="triage-desc">
+          <el-descriptions-item label="学生姓名">{{ selectedWarning.real_name || selectedWarning.username }}</el-descriptions-item>
+          <el-descriptions-item label="所属班级">{{ selectedWarning.class_name || '未分配' }}</el-descriptions-item>
+          <el-descriptions-item label="预警级别">
+            <el-tag :type="riskType(selectedWarning.warning_level)">{{ riskLabel(selectedWarning.warning_level) }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="已等待时间">{{ waitingHours(selectedWarning.created_at) }} 小时</el-descriptions-item>
+          <el-descriptions-item label="触发时间" :span="2">{{ formatTime(selectedWarning.created_at) }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div class="triage-section">
+          <h5>预警触发依据：</h5>
+          <p class="section-text">{{ selectedWarning.reason }}</p>
+        </div>
+
+        <div class="triage-section">
+          <h5>系统评估干预建议：</h5>
+          <p class="section-text suggestion-text">{{ selectedWarning.suggestion }}</p>
+        </div>
+
+        <el-alert
+          title="跟进须知"
+          type="info"
+          description="点击下方“确认完成跟进”将更新预警状态。请确保已完成线下辅导、家长电话或心理记录建档。"
+          :closable="false"
+          show-icon
+        />
+      </div>
+      <template #footer>
+        <el-button @click="triageVisible = false">取消</el-button>
+        <el-button
+          v-if="selectedWarning && selectedWarning.status !== 'handled'"
+          type="primary"
+          :loading="handling"
+          @click="handleTriage"
+        >
+          确认完成跟进
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -122,9 +179,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { RefreshRight } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/PageHeader.vue'
 import { getAdminEmotionDistribution, getAdminOverview, getAdminRiskTrend } from '@/api/stats'
-import { listAdminWarnings } from '@/api/warnings'
+import { listAdminWarnings, markWarningHandled } from '@/api/warnings'
+import { emotionLabel, emotionColor, riskLabel, riskType, formatTime } from '@/domain/mentalHealth'
 
 const WARNING_RESPONSE_HOURS = 24
 
@@ -136,21 +195,9 @@ const distribution = ref([])
 const warnings = ref([])
 const riskTrend = ref([])
 
-const emotionMap = {
-  happy: '开心',
-  sad: '悲伤',
-  angry: '愤怒',
-  fear: '恐惧',
-  disgust: '厌恶',
-  surprise: '惊讶',
-  neutral: '平静',
-}
-
-const riskMap = {
-  low: { label: '低风险', type: 'success', weight: 1 },
-  medium: { label: '中风险', type: 'warning', weight: 2 },
-  high: { label: '高风险', type: 'danger', weight: 3 },
-}
+const triageVisible = ref(false)
+const selectedWarning = ref(null)
+const handling = ref(false)
 
 const negativeEmotions = new Set(['sad', 'angry', 'fear', 'disgust'])
 
@@ -171,39 +218,40 @@ const negativeEmotionPercent = computed(() => {
 
 const triageMetrics = computed(() => [
   {
-    label: '待处置预警',
+    label: '待处置风险预警',
     value: pendingWarnings.value.length,
     tone: pendingWarnings.value.length ? 'warning' : 'stable',
-    detail: `高风险 ${highPendingWarnings.value.length} 条，超 ${WARNING_RESPONSE_HOURS} 小时 ${overdueWarnings.value.length} 条`,
+    detail: `高危预警 ${highPendingWarnings.value.length} 条 · 超时未决 ${overdueWarnings.value.length} 条`,
   },
   {
-    label: '今日识别记录',
+    label: '今日识别样本数',
     value: overview.value.today_records ?? 0,
     tone: 'info',
-    detail: `在册学生 ${overview.value.student_count ?? 0} 人，记录数不等同覆盖人数`,
+    detail: `全校在册学生 ${overview.value.student_count ?? 0} 人`,
   },
   {
-    label: '今日已跟进',
+    label: '今日处理标记数',
     value: handledTodayCount.value,
     tone: handledTodayCount.value ? 'stable' : 'muted',
-    detail: '来自预警处理时间，后续需接入干预记录',
+    detail: '仅代表预警记录跟进完成',
   },
   {
-    label: '负向情绪占比',
+    label: '全校负向情绪比',
     value: `${negativeEmotionPercent.value}%`,
     tone: negativeEmotionPercent.value >= 30 ? 'warning' : 'info',
-    detail: '悲伤、愤怒、恐惧、厌恶识别记录占比',
+    detail: '悲伤/愤怒/恐惧/厌恶样本占比',
   },
 ])
 
 const priorityQueue = computed(() =>
   [...pendingWarnings.value]
     .sort((a, b) => {
-      const riskGap = (riskMap[b.warning_level]?.weight || 0) - (riskMap[a.warning_level]?.weight || 0)
+      const riskWeight = { high: 3, medium: 2, low: 1 }
+      const riskGap = (riskWeight[b.warning_level] || 0) - (riskWeight[a.warning_level] || 0)
       if (riskGap) return riskGap
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     })
-    .slice(0, 4)
+    .slice(0, 3)
 )
 
 const classRiskRows = computed(() => {
@@ -221,13 +269,13 @@ const classRiskRows = computed(() => {
     const row = rows.get(className)
     if (warning.warning_level === 'high') row.high += 1
     if (warning.warning_level === 'medium') row.medium += 1
-    row.students.add(warning.user_id || warning.username || warning.real_name || warning.id)
+    row.students.add(warning.user_id)
   })
 
   return [...rows.values()]
     .map((row) => ({ ...row, studentCount: row.students.size }))
     .sort((a, b) => b.high - a.high || b.medium - a.medium || b.studentCount - a.studentCount)
-    .slice(0, 5)
+    .slice(0, 3)
 })
 
 const riskTrendRows = computed(() => {
@@ -242,7 +290,7 @@ const riskTrendRows = computed(() => {
     if (item.level === 'medium') row.medium += count
     row.total += count
   })
-  return [...buckets.values()].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-7)
+  return [...buckets.values()].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-6)
 })
 
 const maxTrendTotal = computed(() => Math.max(1, ...riskTrendRows.value.map((row) => row.total)))
@@ -264,9 +312,41 @@ const loadData = async () => {
     warnings.value = warningsRes.data || []
     riskTrend.value = riskTrendRes.data || []
   } catch (error) {
-    loadError.value = error?.message || '工作台数据加载失败，请稍后重试。'
+    loadError.value = error?.message || '工作台数据加载失败，请重试。'
   } finally {
     loading.value = false
+  }
+}
+
+function openTriageDialog(warning) {
+  selectedWarning.value = warning
+  triageVisible.value = true
+}
+
+async function handleTriage() {
+  if (!selectedWarning.value) return
+  
+  try {
+    await ElMessageBox.confirm('请确认已与该学生进行线下沟通，或已完成心理记录归档。确认后该预警标记为已处理。', '预警跟进确认', {
+      confirmButtonText: '完成跟进',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+
+  handling.value = true
+  try {
+    await markWarningHandled(selectedWarning.value.id)
+    ElMessage.success('跟进记录已更新完成')
+    triageVisible.value = false
+    selectedWarning.value = null
+    await loadData()
+  } catch (err) {
+    ElMessage.error(err.message || '更新跟进记录失败')
+  } finally {
+    handling.value = false
   }
 }
 
@@ -283,10 +363,6 @@ function waitingHours(value) {
   return Math.max(0, Math.floor(elapsed / 1000 / 60 / 60))
 }
 
-const formatTime = (value) => (value ? new Date(value).toLocaleString() : '-')
-const emotionLabel = (value) => emotionMap[value] || value || '-'
-const riskLabel = (value) => riskMap[value]?.label || value || '-'
-const riskType = (value) => riskMap[value]?.type || 'info'
 const trendWidth = (value) => {
   const count = Number(value || 0)
   return count ? `${Math.max(4, (count / maxTrendTotal.value) * 100)}%` : '0%'
@@ -301,8 +377,10 @@ onMounted(loadData)
 
 <style scoped>
 .admin-risk-page {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  height: 100%;
 }
 
 .load-error {
@@ -316,29 +394,30 @@ onMounted(loadData)
 }
 
 .triage-card {
-  min-height: 108px;
+  height: 112px;
 }
 
 .metric-label {
   display: block;
   color: var(--mh-muted);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 11.5px;
+  font-weight: 600;
 }
 
 .triage-card strong {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--mh-ink);
-  font-size: 30px;
-  line-height: 1.2;
+  font-size: 24px;
+  font-weight: 850;
+  line-height: 1.25;
 }
 
 .triage-card p {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: var(--mh-muted);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 11.5px;
+  line-height: 1.5;
 }
 
 .tone-warning {
@@ -357,80 +436,91 @@ onMounted(loadData)
   color: var(--mh-muted) !important;
 }
 
-.command-grid,
-.insight-grid {
+.command-grid, .insight-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.90fr);
   gap: 16px;
+  flex: 1;
+}
+
+.priority-panel, .class-panel, .trend-panel, .emotion-panel {
+  height: 280px;
 }
 
 .section-heading {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  align-items: baseline;
 }
 
 .section-heading span {
+  font-weight: 700;
   color: var(--mh-ink);
-  font-weight: 800;
 }
 
 .section-heading small {
   color: var(--mh-muted);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
 }
 
-.warning-list,
-.class-list,
-.trend-list,
-.emotion-list {
-  display: grid;
-  gap: 10px;
+.warning-list, .class-list, .trend-list, .emotion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .warning-item {
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px solid var(--mh-line);
   border-radius: var(--mh-radius-md);
   background: var(--mh-surface);
+  cursor: pointer;
+  transition: all 0.18s ease;
 }
 
-.warning-main,
-.warning-meta {
+.warning-item:hover {
+  border-color: var(--mh-primary);
+  background-color: var(--mh-primary-soft);
+  transform: translateY(-1px);
+}
+
+.warning-main {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  font-size: 12px;
 }
 
 .warning-main strong {
   color: var(--mh-ink);
 }
 
-.warning-main span:last-child,
-.warning-meta {
+.class-text {
   color: var(--mh-muted);
-  font-size: 13px;
 }
 
-.warning-item p {
-  margin: 10px 0;
+.warning-reason {
+  margin: 6px 0;
+  font-size: 12.5px;
   color: var(--mh-text);
-  line-height: 1.6;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .warning-meta {
+  display: flex;
   justify-content: space-between;
+  font-size: 11px;
+  color: var(--mh-muted);
 }
 
 .class-row {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0;
+  align-items: center;
+  padding: 8px 0;
   border-bottom: 1px solid var(--mh-line);
 }
 
@@ -438,49 +528,40 @@ onMounted(loadData)
   border-bottom: none;
 }
 
-.class-row strong,
-.class-row span {
+.class-info strong {
   display: block;
-}
-
-.class-row strong {
+  font-size: 13px;
   color: var(--mh-ink);
 }
 
-.class-row span {
-  margin-top: 4px;
+.class-info span {
+  display: block;
+  font-size: 11.5px;
   color: var(--mh-muted);
-  font-size: 13px;
+  margin-top: 2px;
 }
 
 .class-counts {
   display: flex;
-  gap: 10px;
-  white-space: nowrap;
+  gap: 6px;
 }
 
-.risk-high {
-  color: var(--mh-danger) !important;
-}
-
-.risk-medium {
-  color: var(--mh-warning) !important;
-}
-
-.trend-row,
-.emotion-row {
+.trend-row, .emotion-row {
   display: grid;
   grid-template-columns: 78px minmax(0, 1fr) 42px;
   align-items: center;
-  gap: 10px;
-  color: var(--mh-text);
-  font-size: 13px;
+  gap: 12px;
+  font-size: 12px;
 }
 
-.trend-track,
-.emotion-track {
+.trend-date {
+  color: var(--mh-text);
+  font-weight: 600;
+}
+
+.trend-track, .emotion-track {
   display: flex;
-  height: 12px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--mh-surface-muted);
@@ -494,91 +575,52 @@ onMounted(loadData)
   background: var(--mh-warning);
 }
 
-.emotion-track span {
-  background: var(--mh-info);
-}
-
-.trend-row strong,
-.emotion-row strong {
+.trend-row strong, .emotion-row strong {
   color: var(--mh-ink);
   text-align: right;
+  font-weight: 700;
 }
 
-@media (max-width: 720px) {
+/* Triage modal details */
+.triage-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.triage-desc {
+  margin-bottom: 4px;
+}
+.triage-section h5 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--mh-ink);
+}
+.section-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--mh-text);
+  background: var(--mh-surface-muted);
+  border: 1px solid var(--mh-line);
+  padding: 10px 12px;
+  border-radius: var(--mh-radius-md);
+}
+.suggestion-text {
+  font-weight: 600;
+  color: var(--mh-primary-strong);
+  border-color: var(--mh-primary-soft);
+}
+
+@media (max-width: 800px) {
   .triage-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .command-grid,
-  .insight-grid {
+  .command-grid, .insight-grid {
     grid-template-columns: 1fr;
   }
-}
-
-@media (min-width: 721px) and (max-width: 1100px) {
-  .priority-panel :deep(.el-card__body),
-  .class-panel :deep(.el-card__body) {
-    max-height: 420px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .trend-panel :deep(.el-card__body),
-  .emotion-panel :deep(.el-card__body) {
-    max-height: 260px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-}
-
-@media (max-width: 640px) {
-  .triage-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .triage-card {
-    min-height: 94px;
-  }
-
-  .triage-card strong {
-    font-size: 22px;
-  }
-
-  .triage-card p {
-    font-size: 12px;
-    line-height: 1.45;
-  }
-
-  .priority-panel :deep(.el-card__body),
-  .class-panel :deep(.el-card__body),
-  .trend-panel :deep(.el-card__body),
-  .emotion-panel :deep(.el-card__body) {
-    max-height: 220px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .command-grid {
-    max-height: 520px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .insight-grid {
-    max-height: 420px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .section-heading,
-  .class-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .trend-row,
-  .emotion-row {
-    grid-template-columns: 64px minmax(0, 1fr) 36px;
+  .priority-panel, .class-panel, .trend-panel, .emotion-panel {
+    height: auto;
   }
 }
 </style>

@@ -2,7 +2,7 @@
   <div class="page profile-page">
     <PageHeader
       title="个人档案"
-      :description="locked ? '档案已完成入档，如需调整请联系管理员。' : '请补全真实姓名、性别和班级，保存后用于校内关注和必要支持。'"
+      :description="locked ? '您的档案已录入完成。如需调整，请联系管理员或心理中心老师。' : '请补全以下真实信息。保存后，系统将关联您的测评数据并提供精细化服务。'"
     />
 
     <el-alert
@@ -14,57 +14,106 @@
       :closable="false"
     />
 
-    <el-card v-if="locked" class="profile-card" shadow="never">
-      <template #header>已入档信息</template>
-      <el-alert
-        class="profile-alert"
-        title="学生本人不能直接修改已入档资料，确需变更时请联系辅导员或系统管理员。"
-        type="success"
-        show-icon
-        :closable="false"
-      />
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="用户名">{{ user.username || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="姓名">{{ user.real_name || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="性别">{{ user.gender || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="班级">{{ user.class_name || className || '-' }}</el-descriptions-item>
-      </el-descriptions>
-    </el-card>
+    <div class="profile-grid">
+      <!-- Left card: Form or locked info -->
+      <div class="main-column">
+        <el-card v-if="locked" class="info-card" shadow="never">
+          <template #header>
+            <div class="card-header-title">已入档档案信息</div>
+          </template>
+          
+          <el-alert
+            class="profile-alert"
+            title="信息锁定提示"
+            type="info"
+            description="学生本人不能直接修改已入档的资料。若信息有误，请联系辅导员或管理员进行修正。"
+            show-icon
+            :closable="false"
+          />
+          
+          <el-descriptions :column="2" border class="descriptions-box">
+            <el-descriptions-item label="登录账号">{{ user.username || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="真实姓名">{{ user.real_name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="学生性别">{{ user.gender || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="所属班级">{{ user.class_name || className || '-' }}</el-descriptions-item>
+          </el-descriptions>
+        </el-card>
 
-    <el-card v-else class="profile-card" shadow="never">
-      <template #header>学生入档信息</template>
-      <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="profile-form">
-        <el-form-item label="用户名">
-          <el-input :model-value="user.username" disabled />
-        </el-form-item>
-        <el-form-item label="真实姓名" prop="real_name">
-          <el-input v-model.trim="form.real_name" autocomplete="name" placeholder="请输入真实姓名" :disabled="loading" />
-        </el-form-item>
-        <el-form-item label="性别" prop="gender">
-          <el-radio-group v-model="form.gender" :disabled="loading">
-            <el-radio value="男">男</el-radio>
-            <el-radio value="女">女</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="班级" prop="class_id">
-          <el-select v-model="form.class_id" placeholder="请选择班级" class="class-select" :disabled="loading">
-            <el-option v-for="item in classes" :key="item.id" :label="item.name" :value="item.id" />
-          </el-select>
-        </el-form-item>
-        <el-alert
-          class="profile-alert"
-          title="保存后系统会将测评、识别记录和风险提醒关联到该学生档案。"
-          type="info"
-          show-icon
-          :closable="false"
-        />
-        <div class="form-actions">
-          <el-button type="primary" :loading="loading" :disabled="loading" @click="handleSubmit">
-            保存档案
-          </el-button>
-        </div>
-      </el-form>
-    </el-card>
+        <el-card v-else class="info-card" shadow="never">
+          <template #header>
+            <div class="card-header-title">补充入档资料</div>
+          </template>
+          
+          <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="profile-form">
+            <div class="form-row">
+              <el-form-item label="登录账号" class="form-item-half">
+                <el-input :model-value="user.username" disabled />
+              </el-form-item>
+              
+              <el-form-item label="真实姓名" prop="real_name" class="form-item-half">
+                <el-input v-model.trim="form.real_name" placeholder="请输入真实姓名" :disabled="loading" />
+              </el-form-item>
+            </div>
+
+            <div class="form-row">
+              <el-form-item label="性别" prop="gender" class="form-item-half">
+                <el-radio-group v-model="form.gender" :disabled="loading" class="gender-radio">
+                  <el-radio-button value="男">男生</el-radio-button>
+                  <el-radio-button value="女">女生</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+              
+              <el-form-item label="选择班级" prop="class_id" class="form-item-half">
+                <el-select v-model="form.class_id" placeholder="请选择您的班级" class="class-select" :disabled="loading">
+                  <el-option v-for="item in classes" :key="item.id" :label="item.name" :value="item.id" />
+                </el-select>
+              </el-form-item>
+            </div>
+
+            <el-alert
+              class="profile-alert"
+              title="填写须知"
+              type="warning"
+              description="真实姓名与班级是匹配后续心理测评、预警跟进的唯一凭证，请务必如实填写。保存后不可自行修改。"
+              :closable="false"
+              show-icon
+            />
+
+            <div class="form-actions">
+              <el-button type="primary" :loading="loading" :disabled="loading" class="save-btn" @click="handleSubmit">
+                提交并保存档案
+              </el-button>
+            </div>
+          </el-form>
+        </el-card>
+      </div>
+
+      <!-- Right card: System usage guide & counselor contact info -->
+      <div class="side-column">
+        <el-card class="guide-card" shadow="never">
+          <template #header>
+            <div class="card-header-title">系统使用须知与帮助</div>
+          </template>
+          
+          <div class="guide-content">
+            <div class="guide-item">
+              <h5>如何记录个人情绪？</h5>
+              <p>进入“情绪识别”页面，允许调用摄像头进行面部捕捉，或手动上传您的生活照片，系统会自动分析您的主导情绪并记录在“识别记录”中。</p>
+            </div>
+
+            <div class="guide-item">
+              <h5>关于风险评估</h5>
+              <p>系统仅根据情绪识别频度及自测问卷给出日常心理波动的参考建议，并不代表专业临床心理评估结果。</p>
+            </div>
+
+            <div class="guide-item">
+              <h5>隐私与数据安全</h5>
+              <p>您的全部测评记录、图像识别记录受严格权限控制，仅限学校心理中心授权教师及本人查阅，不作任何外部透露。</p>
+            </div>
+          </div>
+        </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -121,7 +170,7 @@ const handleSubmit = async () => {
       class_id: form.class_id,
     })
     userStore.updateUser(res.data)
-    ElMessage.success('个人档案已保存')
+    ElMessage.success('个人档案已成功保存')
     router.push('/student')
   } finally {
     loading.value = false
@@ -131,15 +180,51 @@ const handleSubmit = async () => {
 
 <style scoped>
 .profile-page {
-  max-width: 760px;
+  display: grid;
+  gap: 16px;
+  max-width: 100%;
 }
 
-.profile-card {
-  max-width: 680px;
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
+  gap: 16px;
+  align-items: start;
 }
 
-.profile-form {
-  max-width: 520px;
+.card-header-title {
+  font-weight: 700;
+  color: var(--mh-ink);
+}
+
+.descriptions-box {
+  margin-top: 16px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-item-half {
+  flex: 1;
+}
+
+.gender-radio {
+  width: 100%;
+  display: flex;
+}
+
+.gender-radio :deep(.el-radio-button) {
+  flex: 1;
+}
+
+.gender-radio :deep(.el-radio-button__inner) {
+  width: 100%;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .class-select {
@@ -147,21 +232,52 @@ const handleSubmit = async () => {
 }
 
 .profile-alert {
-  margin: 8px 0 16px;
+  margin-bottom: 20px;
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
+  margin-top: 24px;
 }
 
-@media (max-width: 640px) {
-  .form-actions {
-    justify-content: stretch;
-  }
+.save-btn {
+  height: 40px;
+  padding: 0 24px;
+  font-weight: 700;
+}
 
-  .form-actions .el-button {
-    width: 100%;
+.guide-card {
+  height: 100%;
+}
+
+.guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.guide-item h5 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--mh-ink);
+}
+
+.guide-item p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--mh-muted);
+}
+
+@media (max-width: 800px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-row {
+    flex-direction: column;
+    gap: 0;
   }
 }
 </style>

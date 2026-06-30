@@ -3,64 +3,88 @@
     <PageHeader
       eyebrow="留存视频复核"
       title="视频会话工作台"
-      description="选择学生留存视频，完成抽帧识别、过程复核和风险信号整理。"
-    >
-      <template #actions>
-        <el-button :loading="historyLoading" @click="loadHistory">刷新历史会话</el-button>
-      </template>
-    </PageHeader>
+      description="选择学生并对已留存的咨询对话视频进行自动抽帧人脸面部表情识别与情绪波动评估"
+    />
 
-    <section class="video-summary" aria-label="视频会话概览">
+    <!-- Block 1: Top overview statistics -->
+    <section class="video-summary" v-loading="historyLoading" aria-label="视频会话概览">
       <div class="summary-item">
-        <span>当前任务</span>
-        <strong>{{ selectedStudentName }}</strong>
+        <span>当前选择任务</span>
+        <strong :title="selectedStudentName">{{ selectedStudentName }}</strong>
         <small>{{ selectedClassName }}</small>
       </div>
       <div class="summary-item">
-        <span>历史会话</span>
+        <span>历史会话总数</span>
         <strong>{{ historyStats.total }}</strong>
-        <small>已完成 {{ historyStats.completed }} 条</small>
+        <small>已分析完成 {{ historyStats.completed }} 场</small>
       </div>
       <div class="summary-item is-risk">
-        <span>高风险记录</span>
+        <span>高危预警会话</span>
         <strong>{{ historyStats.highRisk }}</strong>
-        <small>来自已完成视频会话</small>
+        <small>触发高风险跟进警报</small>
       </div>
       <div class="summary-item is-file">
-        <span>最近留存文件</span>
+        <span>最近复核文件</span>
         <strong :title="historyStats.latestFile">{{ historyStats.latestFile }}</strong>
         <small>{{ historyStats.latestStudent }}</small>
       </div>
     </section>
 
+    <!-- Block 2: Middle control area (Form + Camera simulator) -->
     <section class="video-workbench" aria-label="视频会话任务区">
-      <VideoSessionSelector
-        v-model:selected-class-id="selectedClassId"
-        v-model:selected-student-id="selectedStudentId"
-        v-model:frame-count="frameCount"
-        :classes="classes"
-        :students="students"
-        :check-result="checkResult"
-        :video-duration="videoDuration"
-        :capture-interval-ms="captureIntervalMs"
-        :primary-button-label="primaryButtonLabel"
-        :primary-button-type="primaryButtonType"
-        :primary-button-loading="primaryButtonLoading"
-        :primary-button-disabled="primaryButtonDisabled"
-        @class-change="onClassChange"
-        @student-change="onStudentChange"
-        @primary-action="handlePrimaryAction"
-      />
+      <!-- Selector control card -->
+      <div class="selector-container">
+        <VideoSessionSelector
+          v-model:selected-class-id="selectedClassId"
+          v-model:selected-student-id="selectedStudentId"
+          v-model:frame-count="frameCount"
+          :classes="classes"
+          :students="students"
+          :check-result="checkResult"
+          :video-duration="videoDuration"
+          :capture-interval-ms="captureIntervalMs"
+          :primary-button-label="primaryButtonLabel"
+          :primary-button-type="primaryButtonType"
+          :primary-button-loading="primaryButtonLoading"
+          :primary-button-disabled="primaryButtonDisabled"
+          @class-change="onClassChange"
+          @student-change="onStudentChange"
+          @primary-action="handlePrimaryAction"
+        />
+      </div>
 
-      <div class="analysis-stage">
+      <!-- Camera viewport card -->
+      <div class="camera-container">
         <VideoCapturePanel
-          :phase="phase"
-          :can-start="canStart"
           @video-element="setVideoElement"
           @video-meta="onVideoMeta"
           @video-ended="onVideoEnded"
         />
+      </div>
+    </section>
 
+    <!-- Block 3: Bottom historical records table -->
+    <section class="video-history-section" aria-label="历史会话列表">
+      <VideoSessionHistory
+        v-model:current-page="historyCurrentPage"
+        v-model:page-size="historyPageSize"
+        :sessions="historySessions"
+        :loading="historyLoading"
+        @refresh="loadHistory"
+        @detail="viewDetail"
+      />
+    </section>
+
+    <!-- 抽帧分析运行中 + 分析结果生成子窗口 (Dialog) -->
+    <el-dialog
+      v-model="analysisDialogVisible"
+      title="会话视频评估报告（实时）"
+      width="960px"
+      :close-on-click-modal="phase !== 'running'"
+      :show-close="phase !== 'running'"
+      destroy-on-close
+    >
+      <div v-if="phase === 'running'" class="running-modal-body">
         <VideoSessionProgress
           :phase="phase"
           :completed-frame-count="completedFrameCount"
@@ -69,32 +93,28 @@
           :has-frame-results="frameResults.length > 0"
         />
       </div>
-    </section>
-
-    <section class="analysis-results" :class="{ 'is-empty': !hasAnalysisResults }" aria-label="视频会话结果区">
-      <template v-if="hasAnalysisResults">
-        <VideoAssessmentReport :session-summary="sessionSummary" />
-        <VideoEmotionCurve :frame-results="frameResults" />
-        <VideoFrameResultsTable :frame-results="frameResults" />
-      </template>
-      <div v-else class="result-empty">
-        <div>
-          <strong>结果区等待会话数据</strong>
-          <p>完成一次抽帧分析后，这里会显示风险等级、情绪曲线和逐帧复核明细。</p>
+      
+      <div v-else-if="phase === 'completed' && sessionSummary" class="result-modal-grid">
+        <!-- Left Column: Report Details -->
+        <div class="report-box">
+          <VideoAssessmentReport :session-summary="sessionSummary" />
         </div>
-        <span>未开始</span>
+        
+        <!-- Right Column: Curves & Details Table -->
+        <div class="charts-box-col">
+          <VideoEmotionCurve :frame-results="frameResults" />
+          <VideoFrameResultsTable :frame-results="frameResults" />
+        </div>
       </div>
-    </section>
+      
+      <template #footer>
+        <el-button type="primary" :disabled="phase === 'running'" @click="closeAnalysisDialog">
+          确认并关闭
+        </el-button>
+      </template>
+    </el-dialog>
 
-    <VideoSessionHistory
-      v-model:current-page="historyCurrentPage"
-      v-model:page-size="historyPageSize"
-      :sessions="historySessions"
-      :loading="historyLoading"
-      @refresh="loadHistory"
-      @detail="viewDetail"
-    />
-
+    <!-- 历史详情子窗口 (Dialog) -->
     <VideoSessionDetailDialog v-model="detailVisible" :detail-session="detailSession" />
   </div>
 </template>
@@ -127,20 +147,21 @@ const historySessions = ref([])
 const historyLoading = ref(false)
 const historyCurrentPage = ref(1)
 const historyPageSize = ref(6)
+
 const detailVisible = ref(false)
 const detailSession = ref(null)
 
+const analysisDialogVisible = ref(false)
+
 const selectedClassName = computed(() => {
-  const item = classes.value.find((current) => current.id === selectedClassId.value)
+  const item = classes.value.find((c) => c.id === selectedClassId.value)
   return item?.name || '未选择班级'
 })
 
 const selectedStudentName = computed(() => {
-  const item = students.value.find((current) => current.id === selectedStudentId.value)
+  const item = students.value.find((c) => c.id === selectedStudentId.value)
   return item?.real_name || item?.username || '未选择学生'
 })
-
-const hasAnalysisResults = computed(() => frameResults.value.length > 0 || Boolean(sessionSummary.value))
 
 const historyStats = computed(() => {
   const completed = historySessions.value.filter((item) => item.status === 'completed')
@@ -151,8 +172,8 @@ const historyStats = computed(() => {
     total: historySessions.value.length,
     completed: completed.length,
     highRisk: highRisk.length,
-    latestFile: latest?.video_filename || '暂无记录',
-    latestStudent: latest?.student_name ? `${latest.class_name || '未分班'} / ${latest.student_name}` : '等待会话记录',
+    latestFile: latest?.video_filename || '无留存记录',
+    latestStudent: latest?.student_name ? `${latest.class_name || '未分班'} · ${latest.student_name}` : '暂无数据',
   }
 })
 
@@ -170,7 +191,6 @@ const {
   primaryButtonType,
   primaryButtonLoading,
   primaryButtonDisabled,
-  handleStart,
   handlePrimaryAction,
   onVideoMeta,
   onVideoEnded,
@@ -183,6 +203,18 @@ const {
   refreshStudentCheck: onStudentChange,
   refreshHistory: loadHistory,
 })
+
+// Auto open analysis progress dialog when active analysis starts
+watch(phase, (newPhase) => {
+  if (newPhase === 'running') {
+    analysisDialogVisible.value = true
+  }
+})
+
+function closeAnalysisDialog() {
+  analysisDialogVisible.value = false
+  clearLastAnalyzedVideo()
+}
 
 async function loadStudents() {
   try {
@@ -222,9 +254,8 @@ async function onStudentChange(value) {
 async function loadHistory() {
   historyLoading.value = true
   try {
-    const res = await listVideoSessions({ limit: 50 })
+    const res = await listVideoSessions({ limit: 100 })
     historySessions.value = res.data?.items || []
-    historyCurrentPage.value = 1
   } finally {
     historyLoading.value = false
   }
@@ -256,10 +287,10 @@ watch(historyPageSize, () => {
 
 <style scoped>
 .video-analysis-page {
-  display: grid;
-  max-width: 100%;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  overflow-x: hidden;
+  height: 100%;
 }
 
 .video-summary {
@@ -269,27 +300,29 @@ watch(historyPageSize, () => {
 }
 
 .summary-item {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
-  gap: 6px;
-  padding: 14px 16px;
+  gap: 4px;
+  padding: 12px 16px;
   border: 1px solid var(--mh-line);
   border-radius: var(--mh-radius-md);
   background: var(--mh-surface);
+  height: 80px;
 }
 
 .summary-item span {
   color: var(--mh-muted);
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 11.5px;
+  font-weight: 600;
 }
 
 .summary-item strong {
   overflow: hidden;
   color: var(--mh-ink);
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-size: 18px;
+  font-weight: 850;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -298,7 +331,7 @@ watch(historyPageSize, () => {
 .summary-item small {
   overflow: hidden;
   color: var(--mh-muted);
-  font-size: 12px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -308,121 +341,73 @@ watch(historyPageSize, () => {
 }
 
 .summary-item.is-file strong {
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.35;
 }
 
 .video-workbench {
   display: grid;
-  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
-  gap: 16px;
 }
 
-.analysis-stage {
+.camera-container {
+  height: 100%;
+}
+
+.video-history-section {
+  flex: 1;
+}
+
+/* Dialog run-time popup layout */
+.running-modal-body {
+  padding: 20px;
+}
+
+.result-modal-grid {
   display: grid;
-  min-width: 0;
-  gap: 12px;
+  grid-template-columns: 380px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
 }
 
-.analysis-results {
-  display: grid;
-  grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1.18fr);
-  gap: 16px;
+.report-box {
+  position: sticky;
+  top: 0;
 }
 
-.analysis-results :deep(.frame-table-card) {
-  grid-column: 1 / -1;
-}
-
-.analysis-results.is-empty {
-  display: block;
-}
-
-.result-empty {
+.charts-box-col {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 16px;
-  min-height: 96px;
-  padding: 18px 20px;
-  border: 1px dashed var(--mh-line-strong);
-  border-radius: var(--mh-radius-md);
-  background: var(--mh-surface);
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
-.result-empty strong {
-  color: var(--mh-ink);
-  font-size: 16px;
-}
-
-.result-empty p {
-  margin: 6px 0 0;
-  color: var(--mh-muted);
-  line-height: 1.6;
-}
-
-.result-empty span {
-  flex: 0 0 auto;
-  padding: 6px 10px;
-  border-radius: var(--mh-radius-sm);
-  background: var(--mh-surface-muted);
-  color: var(--mh-muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-@media (max-width: 720px) {
-  .video-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .video-workbench,
-  .analysis-results {
+@media (max-width: 900px) {
+  .video-workbench {
     grid-template-columns: 1fr;
   }
+  .result-modal-grid {
+    grid-template-columns: 1fr;
+  }
+  .report-box {
+    position: static;
+  }
+  .charts-box-col {
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 800px) {
   .video-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
   .summary-item {
-    padding: 10px;
-  }
-
-  .summary-item strong {
-    font-size: 18px;
-  }
-
-  .summary-item.is-file {
-    grid-column: auto;
-  }
-
-  .summary-item.is-file strong {
-    font-size: 14px;
-  }
-
-  .result-empty {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .video-workbench {
-    max-height: 740px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .analysis-results.is-empty {
-    display: none;
-  }
-
-  .history-card {
-    max-height: 360px;
-    overflow-x: hidden;
-    overflow-y: auto;
+    height: 76px;
   }
 }
 </style>

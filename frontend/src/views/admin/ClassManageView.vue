@@ -1,6 +1,6 @@
 <template>
   <div class="page class-manage-page">
-    <PageHeader title="班级管理" description="维护系统中的班级范围；删除前需确认班级内没有学生">
+    <PageHeader title="班级管理" description="维护系统中的班级范围。注意：删除班级前必须确认班级内没有任何学生。">
       <template #actions>
         <el-button type="primary" @click="showAdd = true">新增班级</el-button>
       </template>
@@ -16,12 +16,20 @@
     />
 
     <el-card class="class-table-card" shadow="never">
-      <el-empty v-if="!loading && classes.length === 0" description="暂无班级数据" />
-      <el-table v-else v-loading="loading" :data="classes" stripe size="small" max-height="520" aria-label="班级列表">
-        <el-table-column prop="id" label="ID" width="80" align="center" />
-        <el-table-column prop="name" label="班级名称" min-width="200" />
-        <el-table-column prop="student_count" label="学生人数" width="120" align="center" />
-        <el-table-column prop="created_at" label="创建时间" min-width="180" />
+      <el-table
+        v-loading="loading"
+        :data="paginatedClasses"
+        stripe
+        size="small"
+        max-height="450"
+        class="class-table"
+      >
+        <el-table-column prop="id" label="ID" width="90" align="center" />
+        <el-table-column prop="name" label="班级名称" min-width="220" />
+        <el-table-column prop="student_count" label="学生人数" width="130" align="center" />
+        <el-table-column prop="created_at" label="创建时间" min-width="180">
+          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="110" align="center" fixed="right">
           <template #default="{ row }">
             <el-popconfirm
@@ -39,12 +47,22 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="classes.length"
+          layout="prev, pager, next, total"
+          size="small"
+        />
+      </div>
     </el-card>
 
     <el-dialog v-model="showAdd" title="新增班级" width="420px" destroy-on-close>
       <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-position="top">
         <el-form-item label="班级名称" prop="name">
-          <el-input v-model.trim="addForm.name" placeholder="请输入班级名称，如：计算机技术一班" :disabled="adding" />
+          <el-input v-model.trim="addForm.name" placeholder="请输入班级名称，如：心理咨询一班" :disabled="adding" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -58,10 +76,11 @@
 </template>
 
 <script setup>
-import { reactive, onMounted, ref } from 'vue'
+import { reactive, onMounted, ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import PageHeader from '@/components/PageHeader.vue'
 import { createClass, deleteClass, listAdminClasses } from '@/api/classes'
+import { formatTime } from '@/domain/mentalHealth'
 
 const loading = ref(false)
 const loadError = ref('')
@@ -72,6 +91,15 @@ const addFormRef = ref(null)
 const addForm = reactive({ name: '' })
 const addRules = { name: [{ required: true, message: '请输入班级名称', trigger: 'blur' }] }
 
+const currentPage = ref(1)
+const pageSize = ref(10)
+
+const paginatedClasses = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return classes.value.slice(start, end)
+})
+
 onMounted(loadClasses)
 
 async function loadClasses() {
@@ -80,6 +108,7 @@ async function loadClasses() {
   try {
     const res = await listAdminClasses()
     classes.value = res.data || []
+    currentPage.value = 1
   } catch (error) {
     loadError.value = error?.message || '班级数据加载失败，请稍后重试。'
   } finally {
@@ -118,10 +147,10 @@ async function handleDelete(row) {
 
 <style scoped>
 .class-manage-page {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  max-width: 100%;
-  overflow-x: hidden;
+  height: 100%;
 }
 
 .state-alert {
@@ -129,6 +158,18 @@ async function handleDelete(row) {
 }
 
 .class-table-card {
-  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.class-table {
+  margin-top: 4px;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 </style>
