@@ -179,7 +179,13 @@ def create_session(
         VideoAnalysisSession.status == "running",
     ).first()
     if running:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该学生有一个视频分析任务正在进行中，请等待完成后再试")
+        if (running.analyzed_frames or 0) == 0:
+            running.status = "failed"
+            running.reason = "上一次分析未采集到视频帧，已自动释放会话。"
+            running.ended_at = datetime.now()
+            db.commit()
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该学生有一个视频分析任务正在进行中，请等待完成后再试")
 
     folder = _get_student_folder(student_id, db)
     if not folder:

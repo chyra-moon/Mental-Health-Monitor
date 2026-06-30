@@ -48,12 +48,18 @@
         max-height="320"
         class="warnings-table"
       >
-        <el-table-column label="处置优先级" min-width="130">
+        <el-table-column label="处置优先级" min-width="120">
           <template #default="{ row }">
-            <div class="priority-cell">
-              <el-tag :type="priorityType(row)" size="small" effect="plain">{{ priorityLabel(row) }}</el-tag>
-              <span v-if="row.status !== 'handled'">等待 {{ waitingHours(row) }}h</span>
-            </div>
+            <span class="priority-pill" :class="`priority-pill--${priorityTone(row)}`">
+              {{ priorityLabel(row) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="等待时间" width="100" align="center">
+          <template #default="{ row }">
+            <span class="wait-time-text">
+              {{ row.status === 'handled' ? '已处置' : `${waitingHours(row)}h` }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="预警时间" min-width="160">
@@ -62,8 +68,7 @@
         <el-table-column label="学生信息" min-width="180">
           <template #default="{ row }">
             <div class="student-cell">
-              <strong>{{ row.real_name || row.username || '未命名' }}</strong>
-              <span>{{ row.class_name || '未分班' }} · {{ row.username }}</span>
+              <strong>{{ row.class_name || '未分班' }} · {{ row.real_name || '未命名' }}</strong>
             </div>
           </template>
         </el-table-column>
@@ -319,6 +324,15 @@ const priorityType = (row) => {
   return 'info'
 }
 
+const priorityTone = (row) => {
+  if (row.status === 'handled') return 'done'
+  if (isOverdue(row) && row.warning_level === 'high') return 'critical'
+  if (row.warning_level === 'high') return 'high'
+  if (isOverdue(row)) return 'overdue'
+  if (row.warning_level === 'medium') return 'medium'
+  return 'normal'
+}
+
 const isToday = (value) => {
   if (!value) return false
   const date = new Date(value)
@@ -392,13 +406,59 @@ onMounted(loadWarnings)
   gap: 2px;
 }
 
-.priority-cell span, .student-cell span {
-  font-size: 11px;
+.priority-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius-sm);
+  background: var(--mh-surface);
+  color: var(--mh-text);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.priority-pill--critical {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.priority-pill--high {
+  border-color: #fecaca;
+  background: #fff7f7;
+  color: #dc2626;
+}
+
+.priority-pill--overdue,
+.priority-pill--medium {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.priority-pill--done,
+.priority-pill--normal {
+  border-color: var(--mh-line-strong);
+  background: #fafafa;
   color: var(--mh-muted);
+}
+
+.wait-time-text {
+  color: var(--mh-text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
 }
 
 .student-cell strong {
   color: var(--mh-ink);
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 
 .action-cell {

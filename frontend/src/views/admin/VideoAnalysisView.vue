@@ -37,11 +37,7 @@
 
       <!-- Camera viewport card -->
       <div class="camera-container">
-        <VideoCapturePanel
-          @video-element="setVideoElement"
-          @video-meta="onVideoMeta"
-          @video-ended="onVideoEnded"
-        />
+        <VideoCapturePanel />
       </div>
     </section>
 
@@ -61,32 +57,78 @@
     <el-dialog
       v-model="analysisDialogVisible"
       title="视频分析报告"
-      width="960px"
+      width="min(1120px, 94vw)"
       :close-on-click-modal="phase !== 'running'"
       :show-close="phase !== 'running'"
       destroy-on-close
     >
       <div v-if="phase === 'running'" class="running-modal-body">
-        <VideoSessionProgress
-          :phase="phase"
-          :completed-frame-count="completedFrameCount"
-          :frame-count="frameCount"
-          :progress-percentage="progressPercentage"
-          :has-frame-results="frameResults.length > 0"
-        />
+        <section class="analysis-video-section" v-loading="isVideoLoading">
+          <div class="analysis-video-frame">
+            <video
+              v-if="analysisVideoSrc"
+              class="analysis-video"
+              :src="analysisVideoSrc"
+              :aria-label="analysisVideoFilename || '待分析视频'"
+              muted
+              playsinline
+              controls
+              @loadedmetadata="onVideoMeta"
+              @error="onVideoError"
+              @ended="onVideoEnded"
+            ></video>
+            <div v-else class="video-placeholder">正在加载视频...</div>
+          </div>
+          <VideoSessionProgress
+            :phase="phase"
+            :completed-frame-count="completedFrameCount"
+            :frame-count="frameCount"
+            :progress-percentage="progressPercentage"
+            :has-frame-results="frameResults.length > 0"
+          />
+        </section>
+
+        <section class="result-section">
+          <VideoEmotionCurve :frame-results="frameResults" :height="320" />
+        </section>
+
+        <section class="result-section">
+          <VideoFrameResultsTable :frame-results="frameResults" :max-height="260" />
+        </section>
       </div>
       
-      <div v-else-if="phase === 'completed' && sessionSummary" class="result-modal-grid">
-        <!-- Left Column: Report Details -->
-        <div class="report-box">
+      <div v-else-if="phase === 'completed' && sessionSummary" class="result-modal-stack">
+        <section class="analysis-video-section">
+          <div class="analysis-video-frame">
+            <video
+              v-if="analysisVideoSrc"
+              class="analysis-video"
+              :src="analysisVideoSrc"
+              :aria-label="analysisVideoFilename || '已分析视频'"
+              muted
+              playsinline
+              controls
+            ></video>
+            <div v-else class="video-placeholder">视频已完成分析</div>
+          </div>
+        </section>
+
+        <section class="result-section">
+          <VideoEmotionCurve :frame-results="frameResults" :height="340" />
+        </section>
+
+        <section class="result-section">
+          <VideoFrameResultsTable :frame-results="frameResults" :max-height="300" />
+        </section>
+
+        <section class="result-section">
           <VideoAssessmentReport :session-summary="sessionSummary" />
-        </div>
-        
-        <!-- Right Column: Curves & Details Table -->
-        <div class="charts-box-col">
-          <VideoEmotionCurve :frame-results="frameResults" />
-          <VideoFrameResultsTable :frame-results="frameResults" />
-        </div>
+        </section>
+      </div>
+
+      <div v-else-if="phase === 'error'" class="analysis-error-state">
+        <strong>分析未完成</strong>
+        <p>{{ analysisError || '视频分析流程异常，请重新选择学生后再试。' }}</p>
       </div>
       
       <template #footer>
@@ -162,11 +204,14 @@ const historyStats = computed(() => {
 
 const {
   phase,
-  videoRef,
+  analysisVideoSrc,
+  analysisVideoFilename,
   videoDuration,
   captureIntervalMs,
   frameResults,
   sessionSummary,
+  isVideoLoading,
+  analysisError,
   canStart,
   completedFrameCount,
   progressPercentage,
@@ -176,6 +221,7 @@ const {
   primaryButtonDisabled,
   handlePrimaryAction,
   onVideoMeta,
+  onVideoError,
   onVideoEnded,
   clearLastAnalyzedVideo,
   clearLastAnalyzedVideoIfStudentChanged,
@@ -254,10 +300,6 @@ async function viewDetail(id) {
   }
 }
 
-function setVideoElement(element) {
-  videoRef.value = element
-}
-
 onMounted(() => {
   loadStudents()
   loadHistory()
@@ -287,7 +329,7 @@ watch(historyPageSize, () => {
   grid-template-columns: 360px minmax(0, 1fr);
   gap: 12px;
   align-items: stretch;
-  height: 360px;
+  height: 390px;
   min-height: 0;
 }
 
@@ -304,43 +346,86 @@ watch(historyPageSize, () => {
 
 /* Dialog run-time popup layout */
 .running-modal-body {
-  padding: 8px 0;
-}
-
-.result-modal-grid {
-  display: grid;
-  grid-template-columns: 380px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-
-.report-box {
-  position: sticky;
-  top: 0;
-}
-
-.charts-box-col {
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-height: 480px;
-  overflow-y: auto;
-  padding-right: 4px;
+}
+
+.result-modal-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.result-section {
+  min-width: 0;
+}
+
+.analysis-video-section {
+  min-width: 0;
+}
+
+.analysis-video-frame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 430px;
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius-md);
+  background: #111113;
+  overflow: hidden;
+}
+
+.analysis-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #111113;
+}
+
+.video-placeholder {
+  min-height: 260px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4d4d8;
+  font-size: 13px;
+}
+
+.analysis-error-state {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  color: var(--mh-text);
+  background: var(--mh-surface);
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius-md);
+}
+
+.analysis-error-state strong {
+  color: var(--mh-ink);
+  font-size: 15px;
+}
+
+.analysis-error-state p {
+  margin: 0;
+  color: var(--mh-muted);
+  font-size: 12px;
+}
+
+.result-section :deep(.chart-card),
+.result-section :deep(.frame-table-card) {
+  margin-top: 0;
 }
 
 @media (max-width: 900px) {
   .video-workbench {
     grid-template-columns: 1fr;
-  }
-  .result-modal-grid {
-    grid-template-columns: 1fr;
-  }
-  .report-box {
-    position: static;
-  }
-  .charts-box-col {
-    max-height: none;
-    overflow-y: visible;
   }
 }
 

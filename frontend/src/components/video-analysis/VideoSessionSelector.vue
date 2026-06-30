@@ -4,7 +4,7 @@
       <div class="card-title">分析控制面板</div>
     </template>
     
-    <el-form label-position="top">
+    <el-form class="selector-form" label-position="top">
       <el-form-item label="选择班级">
         <el-select
           :model-value="selectedClassId"
@@ -49,27 +49,10 @@
       </el-form-item>
 
       <div v-if="selectedStudentId" class="check-result-box">
-        <el-alert
-          v-if="checkResult === undefined"
-          title="正在准备..."
-          type="info"
-          :closable="false"
-          show-icon
-        />
-        <el-alert
-          v-else-if="checkResult && checkResult.available"
-          title="分析准备就绪"
-          type="success"
-          :closable="false"
-          show-icon
-        />
-        <el-alert
-          v-else
-          title="暂无可分析内容"
-          type="warning"
-          :closable="false"
-          show-icon
-        />
+        <div class="status-strip" :class="statusClass">
+          <span class="status-dot"></span>
+          <strong>{{ statusText }}</strong>
+        </div>
       </div>
 
       <div class="action-box">
@@ -127,6 +110,18 @@ const filteredStudents = computed(() => {
   if (!props.selectedClassId) return []
   return props.students.filter(student => student.class_id === props.selectedClassId)
 })
+
+const statusText = computed(() => {
+  if (props.checkResult === undefined) return '正在准备'
+  if (props.checkResult && props.checkResult.available) return '分析准备就绪'
+  return '暂无可分析内容'
+})
+
+const statusClass = computed(() => {
+  if (props.checkResult === undefined) return 'is-pending'
+  if (props.checkResult && props.checkResult.available) return 'is-ready'
+  return 'is-empty'
+})
 </script>
 
 <style scoped>
@@ -137,11 +132,18 @@ const filteredStudents = computed(() => {
 
 .selector-card :deep(.el-card__body) {
   height: calc(100% - 49px);
-  overflow: auto;
+  overflow: hidden;
+  padding: 12px 16px;
+}
+
+.selector-form {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .selector-card :deep(.el-form-item) {
-  margin-bottom: 14px;
+  margin-bottom: 9px;
 }
 .card-title {
   font-weight: 700;
@@ -150,13 +152,49 @@ const filteredStudents = computed(() => {
 .slider-tip {
   font-size: 11px;
   color: var(--mh-muted);
-  margin-top: 4px;
+  margin-top: 2px;
 }
 .check-result-box {
-  margin: 16px 0;
+  margin: 2px 0 8px;
+}
+
+.status-strip {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--mh-line);
+  border-radius: var(--mh-radius-sm);
+  background: #fbfbfc;
+  color: var(--mh-text);
+}
+
+.status-strip strong {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mh-muted);
+}
+
+.status-strip.is-ready {
+  border-color: var(--mh-line-strong);
+}
+
+.status-strip.is-ready .status-dot {
+  background: var(--mh-primary);
+}
+
+.status-strip.is-empty .status-dot {
+  background: #b45309;
 }
 .action-box {
-  margin-top: 14px;
+  margin-top: auto;
 }
 .start-btn {
   width: 100%;

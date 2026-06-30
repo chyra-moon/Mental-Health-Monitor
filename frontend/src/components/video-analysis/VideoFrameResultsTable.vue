@@ -4,7 +4,7 @@
       <div class="card-title">逐帧表情数据明细</div>
     </template>
     
-    <el-table :data="sortedFrames" stripe size="small" max-height="240">
+    <el-table :data="sortedFrames" stripe size="small" :max-height="maxHeight">
       <el-table-column label="帧号" width="70" align="center">
         <template #default="{ row }">#{{ row.frame_index + 1 }}</template>
       </el-table-column>
@@ -56,6 +56,10 @@ const props = defineProps({
   frameResults: {
     type: Array,
     required: true
+  },
+  maxHeight: {
+    type: [Number, String],
+    default: 240
   }
 })
 

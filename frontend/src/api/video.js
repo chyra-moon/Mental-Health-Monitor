@@ -1,4 +1,5 @@
 import http from './http'
+import { readStoredToken } from '@/stores/user'
 
 // 检查学生是否有可用分析素材
 export function checkStudentVideo(studentId) {
@@ -13,6 +14,17 @@ export function createVideoSession(studentId, frameCount) {
   return http.post('/admin/video/sessions', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
+}
+
+export async function fetchVideoBlob(streamSrc) {
+  const token = readStoredToken()
+  const response = await fetch(streamSrc, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  })
+  if (!response.ok) {
+    throw new Error('视频文件加载失败')
+  }
+  return response.blob()
 }
 
 // 上传画面帧进行分析

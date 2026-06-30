@@ -3,21 +3,22 @@
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
     title="会话评估历史详情"
-    width="960px"
+    width="min(1120px, 94vw)"
     destroy-on-close
     class="detail-dialog"
   >
-    <div v-if="detailSession" class="dialog-body-grid">
-      <!-- Left side: Assessment Report -->
-      <div class="report-col">
+    <div v-if="detailSession" class="dialog-body-stack">
+      <section class="detail-section report-section">
         <VideoAssessmentReport :session-summary="detailSession.session" />
-      </div>
-      
-      <!-- Right side: Curve & Table -->
-      <div class="chart-table-col">
-        <VideoEmotionCurve :frame-results="detailSession.frames" />
-        <VideoFrameResultsTable :frame-results="detailSession.frames" />
-      </div>
+      </section>
+
+      <section class="detail-section chart-section">
+        <VideoEmotionCurve :frame-results="detailSession.frames" :height="360" />
+      </section>
+
+      <section class="detail-section table-section">
+        <VideoFrameResultsTable :frame-results="detailSession.frames" :max-height="320" />
+      </section>
     </div>
     <div v-else class="loading-state">
       <el-skeleton :rows="8" animated />
@@ -43,25 +44,23 @@ defineEmits(['update:modelValue'])
 </script>
 
 <style scoped>
-.dialog-body-grid {
-  display: grid;
-  grid-template-columns: 380px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
+:deep(.detail-dialog .el-dialog__body) {
+  padding-top: 12px;
 }
 
-.report-col {
-  position: sticky;
-  top: 0;
-}
-
-.chart-table-col {
+.dialog-body-stack {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-height: 520px;
-  overflow-y: auto;
-  padding-right: 4px;
+}
+
+.detail-section {
+  min-width: 0;
+}
+
+.chart-section :deep(.chart-card),
+.table-section :deep(.frame-table-card) {
+  margin-top: 0;
 }
 
 .loading-state {
@@ -69,15 +68,8 @@ defineEmits(['update:modelValue'])
 }
 
 @media (max-width: 800px) {
-  .dialog-body-grid {
-    grid-template-columns: 1fr;
-  }
-  .report-col {
-    position: static;
-  }
-  .chart-table-col {
-    max-height: none;
-    overflow-y: visible;
+  .chart-section :deep(.chart-box) {
+    height: 300px !important;
   }
 }
 </style>

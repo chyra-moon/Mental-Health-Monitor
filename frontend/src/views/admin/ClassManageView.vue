@@ -22,6 +22,16 @@
     </section>
 
     <el-card class="class-table-card" shadow="never">
+      <template #header>
+        <div class="table-toolbar">
+          <div class="toolbar-left">
+            <span class="card-title">班级列表</span>
+            <small class="card-desc">共 {{ classes.length }} 个班级</small>
+          </div>
+          <el-button type="primary" @click="showAdd = true">新增班级</el-button>
+        </div>
+      </template>
+
       <el-table
         v-loading="loading"
         :data="paginatedClasses"
@@ -184,6 +194,29 @@ async function handleDelete(row) {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+.table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-title {
+  font-weight: 700;
+  color: var(--mh-ink);
+}
+
+.card-desc {
+  color: var(--mh-muted);
+  font-size: 11px;
 }
 
 .class-table {

@@ -199,7 +199,21 @@ onMounted(loadData)
 }
 
 .header-filter-select {
-  width: 100%;
+  width: 150px;
+}
+
+.header-filter-select :deep(.el-select__wrapper) {
+  min-height: 28px;
+  border-radius: var(--mh-radius-sm);
+  background: var(--mh-surface);
+  box-shadow: 0 0 0 1px var(--mh-line) inset;
+}
+
+.header-filter-select :deep(.el-select__placeholder),
+.header-filter-select :deep(.el-select__selected-item) {
+  color: var(--mh-text);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .pagination-container {
