@@ -3,7 +3,6 @@
     <PageHeader title="心理测评" />
 
     <div class="main-layout" v-loading="pageLoading">
-      <!-- Left side: Description & Start button -->
       <div class="info-column">
         <el-card class="intro-card" shadow="never">
           <div class="intro-header">
@@ -35,7 +34,6 @@
         </el-card>
       </div>
 
-      <!-- Right side: History records -->
       <div class="history-column">
         <el-card class="history-card" shadow="never">
           <template #header>
@@ -92,7 +90,6 @@
       </div>
     </el-card>
 
-    <!-- 答题子窗口 (Modal Dialog) -->
     <el-dialog
       v-model="quizVisible"
       title="心理测评问卷"
@@ -101,7 +98,6 @@
       destroy-on-close
     >
       <div v-if="!showResult" class="quiz-container">
-        <!-- Progress bar -->
         <div class="quiz-progress">
           <div class="progress-info">
             <span>自测进度</span>
@@ -110,11 +106,9 @@
           <el-progress :percentage="Math.round(((currentStep + 1) / questions.length) * 100)" :show-text="false" />
         </div>
 
-        <!-- Question text -->
         <div class="question-box" v-if="questions[currentStep]">
           <h4 class="question-text">{{ questions[currentStep].text }}</h4>
           
-          <!-- Options -->
           <el-radio-group v-model="answers[currentStep]" class="options-group" @change="handleOptionSelect">
             <el-radio 
               v-for="opt in options" 
@@ -150,7 +144,6 @@
         </div>
       </div>
 
-      <!-- Result View -->
       <div v-else class="result-container">
         <div class="result-status">
           <div class="score-circle">
@@ -175,7 +168,6 @@
       </div>
     </el-dialog>
 
-    <!-- 历史详情子窗口 (Modal Dialog) -->
     <el-dialog
       v-model="detailVisible"
       title="测评历史详情"
@@ -200,7 +192,6 @@
           </div>
         </div>
 
-        <!-- System warning warning details if available -->
         <div class="detail-advice-box">
           <h5>系统调适建议：</h5>
           <p>{{ selectedRecord.suggestion || getFallbackSuggestion(selectedRecord) }}</p>
@@ -298,7 +289,7 @@ async function submitQuiz() {
     resultData.value = res.data
     showResult.value = true
     
-    // Save to local history list
+    // 后端未提供历史查询接口，测评历史暂存浏览器本地。
     const newRecord = {
       id: `quiz-${Date.now()}`,
       created_at: new Date().toISOString(),
@@ -545,7 +536,6 @@ onMounted(() => {
   margin-top: 4px;
 }
 
-/* Quiz Modal */
 .quiz-container {
   display: flex;
   flex-direction: column;
@@ -618,7 +608,6 @@ onMounted(() => {
   height: 38px;
 }
 
-/* Result View */
 .result-container {
   display: flex;
   flex-direction: column;
@@ -694,7 +683,6 @@ onMounted(() => {
   font-weight: 700;
 }
 
-/* Detail dialog */
 .detail-container {
   display: flex;
   flex-direction: column;

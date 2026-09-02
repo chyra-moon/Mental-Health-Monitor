@@ -166,7 +166,6 @@ body {
     box-shadow 180ms ease;
 }
 
-/* Default buttons: Solid light-gray background and visible borders */
 .el-button:not(.el-button--primary):not(.el-button--danger):not(.el-button--success):not(.el-button--warning):not(.el-button--info) {
   background-color: var(--mh-surface-muted) !important;
   border-color: var(--mh-line-strong) !important;

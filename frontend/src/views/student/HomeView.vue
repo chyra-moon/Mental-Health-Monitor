@@ -16,7 +16,6 @@
       :closable="false"
     />
 
-    <!-- Layer 1: Stat cards -->
     <div class="summary-grid" v-loading="loading">
       <MetricCard
         label="最近识别情绪"
@@ -44,7 +43,6 @@
       />
     </div>
 
-    <!-- Layer 2: Core Next Step Guidance -->
     <el-card class="next-step-card" shadow="never">
       <div class="next-step-box">
         <div class="advice-main">
@@ -75,9 +73,7 @@
       </div>
     </el-card>
 
-    <!-- Layer 3: Two Column detail preview (Fixed height) -->
     <div class="workspace-grid">
-      <!-- Recent Records -->
       <el-card class="quick-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-title">
@@ -104,7 +100,6 @@
         </div>
       </el-card>
 
-      <!-- Warnings -->
       <el-card class="quick-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-title">
@@ -131,7 +126,6 @@
       </el-card>
     </div>
 
-    <!-- 记录详情子窗口 (Dialog) -->
     <el-dialog
       v-model="recordDialogVisible"
       title="情绪识别记录详情"
@@ -161,7 +155,6 @@
       </div>
     </el-dialog>
 
-    <!-- 预警详情子窗口 (Dialog) -->
     <el-dialog
       v-model="warningDialogVisible"
       title="心理关注提醒详情"
@@ -571,7 +564,6 @@ onMounted(loadData)
   color: var(--mh-muted);
 }
 
-/* Detail Modals */
 .detail-modal-body {
   display: flex;
   flex-direction: column;

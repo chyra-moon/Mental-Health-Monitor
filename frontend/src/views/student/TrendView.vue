@@ -18,7 +18,6 @@
       :closable="false"
     />
 
-    <!-- Layer 1: Metrics stats -->
     <section class="stat-grid" v-loading="loading">
       <MetricCard label="总识别次数" :value="totalCount" unit="次" note="当前周期内的情绪识别样本" tone="info" icon="files" />
       <MetricCard
@@ -39,9 +38,7 @@
       <MetricCard label="活跃天数" :value="dayCount" unit="天" note="周期内有识别记录的日期数" tone="neutral" icon="calendar" />
     </section>
 
-    <!-- Layer 2: Main charts and analysis panel -->
     <div class="main-grid">
-      <!-- Left side: ECharts trend curve -->
       <div class="left-col">
         <el-card shadow="never" class="chart-card" v-loading="loading">
           <template #header>
@@ -54,14 +51,12 @@
         </el-card>
       </div>
 
-      <!-- Right side: ECharts distribution & Text insights -->
       <div class="right-col">
         <el-card shadow="never" class="insight-card" v-loading="loading">
           <template #header>
             <span class="card-title">趋势特征诊断</span>
           </template>
           <div v-if="totalCount" class="insight-content">
-            <!-- Mini Pie chart and Rank -->
             <div class="pie-section">
               <div ref="pieChartRef" class="mini-pie-box"></div>
               <div class="ranks-box">
@@ -75,7 +70,6 @@
             
             <el-divider />
             
-            <!-- Automated Diagnosis text -->
             <div class="analysis-box">
               <div class="diagnosis-header">
                 <el-icon class="diagnosis-icon"><Opportunity /></el-icon>

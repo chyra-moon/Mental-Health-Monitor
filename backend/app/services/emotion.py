@@ -8,10 +8,15 @@ from app.config import settings
 UPLOAD_DIR = Path(settings.upload_dir)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# 图片单次识别优先准确；视频逐帧识别会走单独的快速裁脸路径。
+# 单图按顺序尝试多个 DeepFace 检测后端，摄像头采集帧的落盘回退只尝试 retinaface。
 IMAGE_DETECTOR_BACKENDS = ("retinaface", "opencv", "mtcnn", "ssd")
 VIDEO_FALLBACK_DETECTOR_BACKENDS = ("retinaface",)
 _FACE_CASCADE = None
+
+
+# 模型依赖缺失单独上抛，调用方可与无人脸等输入问题分开处理。
+class EmotionModelUnavailableError(RuntimeError):
+    """DeepFace 或其运行依赖不可用。"""
 
 
 def analyze_face(image_bytes: bytes) -> dict:
@@ -24,9 +29,9 @@ def analyze_face(image_bytes: bytes) -> dict:
         "emotion_scores": {"happy": 0.xx, "sad": 0.xx, ...}
     }
     """
+    # 单图落盘仅供 DeepFace 读取，成功或异常后都由 finally 删除临时文件。
     temp_path = None
     try:
-        # 保存临时文件
         ext = _detect_ext(image_bytes)
         filename = f"{uuid.uuid4().hex}{ext}"
         temp_path = UPLOAD_DIR / filename
@@ -52,6 +57,7 @@ def analyze_video_frame(image_bytes: bytes) -> dict:
     except Exception:
         frame = None
 
+    # 摄像头采集帧先以 ndarray 调用 DeepFace，失败后尝试裁取最大人脸，最后才落盘重试。
     if frame is not None:
         try:
             return _call_model_on_array(frame, detector_backend="opencv", enforce_detection=True)
@@ -66,6 +72,7 @@ def analyze_video_frame(image_bytes: bytes) -> dict:
         except Exception:
             pass
 
+    # ndarray 与裁脸路径都失败后才写临时文件，退出该回退路径时统一删除。
     temp_path = None
     try:
         ext = _detect_ext(image_bytes)
@@ -97,13 +104,13 @@ def _detect_ext(data: bytes) -> str:
 
 
 def _call_model(image_path: str, detector_backends: tuple[str, ...]) -> dict:
-    """实际调用模型。如 DeepFace 不可用，返回模拟数据保证开发流程。"""
+    """调用 DeepFace；模型环境不可用时返回明确错误。"""
     try:
         from deepface import DeepFace
-    except (ImportError, AttributeError, ModuleNotFoundError) as e:
-        if "face" in str(e).lower():
-            raise ValueError("未检测到人脸，请确保图片中包含清晰的人脸")
-        return _mock_result()
+    except (ImportError, AttributeError, ModuleNotFoundError) as exc:
+        raise EmotionModelUnavailableError(
+            "情绪识别模型不可用，请检查 DeepFace 及其运行依赖"
+        ) from exc
 
     errors = []
     for backend in detector_backends:
@@ -120,6 +127,7 @@ def _call_model(image_path: str, detector_backends: tuple[str, ...]) -> dict:
             if _is_image_load_error(e):
                 raise ValueError("图片加载失败，请确认上传的是有效的图片文件")
 
+    # 所有检测后端都报告无人脸时转为业务 ValueError，其他异常保留最后一个原始错误。
     if errors and all(_is_no_face_error(e) for e in errors):
         raise ValueError("未检测到人脸，请确保图片中包含清晰的人脸")
     if errors:
@@ -131,8 +139,10 @@ def _call_model(image_path: str, detector_backends: tuple[str, ...]) -> dict:
 def _call_model_on_array(image, detector_backend: str, enforce_detection: bool) -> dict:
     try:
         from deepface import DeepFace
-    except (ImportError, AttributeError, ModuleNotFoundError):
-        return _mock_result()
+    except (ImportError, AttributeError, ModuleNotFoundError) as exc:
+        raise EmotionModelUnavailableError(
+            "情绪识别模型不可用，请检查 DeepFace 及其运行依赖"
+        ) from exc
 
     result = DeepFace.analyze(
         img_path=image,
@@ -179,6 +189,7 @@ def _crop_largest_face(frame):
     if len(faces) == 0:
         return None
 
+    # 裁脸回退遇到多人同帧时取面积最大的框，并保留部分周边区域交给 DeepFace 分类。
     x, y, w, h = max(faces, key=lambda box: box[2] * box[3])
     pad_x = int(w * 0.35)
     pad_y = int(h * 0.45)
@@ -196,6 +207,7 @@ def _normalize_deepface_result(result) -> dict:
     if isinstance(result, list):
         result = result[0]
 
+    # DeepFace 返回百分制情绪分值，系统统一除以 100 并保留四位小数。
     emotions = result.get("emotion", {})
     dominant = max(emotions, key=emotions.get)
     return {
@@ -219,16 +231,3 @@ def _is_no_face_error(error: Exception) -> bool:
 
 def _is_image_load_error(error: Exception) -> bool:
     return "exception while loading" in str(error).lower()
-
-
-def _mock_result() -> dict:
-    """DeepFace 不可用时返回模拟数据，保证开发进度不阻塞。"""
-    return {
-        "dominant_emotion": "neutral",
-        "confidence": 0.85,
-        "emotion_scores": {
-            "angry": 0.01, "disgust": 0.01, "fear": 0.01,
-            "happy": 0.05, "sad": 0.05, "surprise": 0.02,
-            "neutral": 0.85,
-        },
-    }

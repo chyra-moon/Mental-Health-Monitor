@@ -56,6 +56,7 @@ def evaluate_risk(user_id: int, dominant_emotion: str, questionnaire_score: int 
         score += 1
         reasons.append(f"心理问卷得分偏高（{questionnaire_score}分）")
 
+    # 三类加分项累加后，score >= 4 为 high，score >= 2 为 medium。
     if score >= 4:
         level = "high"
     elif score >= 2:
@@ -79,6 +80,7 @@ def evaluate_video_risk(
     score = 0
     reasons = []
     average_emotion_scores = average_emotion_scores or {}
+    # 四类负面情绪的帧均值相加后参与加分，sad 均值还会单独判断 0.2 阈值。
     negative_score_avg = sum(float(average_emotion_scores.get(e, 0) or 0) for e in NEGATIVE_EMOTIONS)
     sad_score_avg = float(average_emotion_scores.get("sad", 0) or 0)
 
@@ -93,6 +95,7 @@ def evaluate_video_risk(
         score += 1
         reasons.append(f"负面情绪占比达到 {negative_ratio:.0%}")
 
+    # 有效帧不足 5 时不触发多帧加分，即使 negative_ratio 已达到 0.5。
     if analyzed_frames >= 5 and negative_ratio >= 0.5:
         score += 1
         reasons.append("连续多帧出现较多负面情绪")
@@ -108,6 +111,7 @@ def evaluate_video_risk(
         score += 1
         reasons.append(f"悲伤情绪平均分数达到 {sad_score_avg:.0%}")
 
+    # 摄像头采集会话累计分按 score >= 4 判 high，score >= 2 判 medium。
     if score >= 4:
         level = "high"
     elif score >= 2:

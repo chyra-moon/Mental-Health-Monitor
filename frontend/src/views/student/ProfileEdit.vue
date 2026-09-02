@@ -12,7 +12,6 @@
     />
 
     <div class="profile-grid">
-      <!-- Left card: Form or locked info -->
       <div class="main-column">
         <el-card v-if="locked" class="info-card" shadow="never">
           <template #header>
@@ -85,7 +84,6 @@
         </el-card>
       </div>
 
-      <!-- Right card: System usage guide & counselor contact info -->
       <div class="side-column">
         <el-card class="guide-card" shadow="never">
           <template #header>

@@ -14,7 +14,6 @@ class CreateClassRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
 
 
-# ---- 管理员接口 ----
 admin_router = APIRouter(prefix="/admin/classes", tags=["班级管理"])
 
 
@@ -73,7 +72,6 @@ def delete_class(class_id: int, user: User = Depends(require_role("admin")), db:
     return {"code": 200, "message": f"班级「{cls.name}」已删除", "data": None}
 
 
-# ---- 学生接口（获取可选班级列表） ----
 @router.get("")
 def list_classes_student(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     classes = db.query(Class).order_by(Class.created_at).all()

@@ -4,7 +4,6 @@
       title="视频分析"
     />
 
-    <!-- Block 1: Top overview statistics -->
     <section class="video-summary" v-loading="historyLoading" aria-label="视频会话概览">
       <MetricCard label="当前对象" :value="selectedStudentName" :note="selectedClassName" tone="neutral" icon="user" compact />
       <MetricCard label="分析记录总数" :value="historyStats.total" unit="场" :note="`已分析完成 ${historyStats.completed} 场`" tone="info" icon="video" compact />
@@ -12,9 +11,7 @@
       <MetricCard label="最近记录" :value="historyStats.latestFile" :note="historyStats.latestStudent" tone="neutral" icon="folder" compact />
     </section>
 
-    <!-- Block 2: Middle control area (Form + Camera simulator) -->
     <section class="video-workbench" aria-label="视频会话任务区">
-      <!-- Selector control card -->
       <div class="selector-container">
         <VideoSessionSelector
           v-model:selected-class-id="selectedClassId"
@@ -35,13 +32,11 @@
         />
       </div>
 
-      <!-- Camera viewport card -->
       <div class="camera-container">
         <VideoCapturePanel />
       </div>
     </section>
 
-    <!-- Block 3: Bottom historical records table -->
     <section class="video-history-section" aria-label="历史会话列表">
       <VideoSessionHistory
         v-model:current-page="historyCurrentPage"
@@ -53,7 +48,6 @@
       />
     </section>
 
-    <!-- 抽帧分析运行中 + 分析结果生成子窗口 (Dialog) -->
     <el-dialog
       v-model="analysisDialogVisible"
       title="视频分析报告"
@@ -138,7 +132,6 @@
       </template>
     </el-dialog>
 
-    <!-- 历史详情子窗口 (Dialog) -->
     <VideoSessionDetailDialog v-model="detailVisible" :detail-session="detailSession" />
   </div>
 </template>
@@ -233,7 +226,6 @@ const {
   refreshHistory: loadHistory,
 })
 
-// Auto open analysis progress dialog when active analysis starts
 watch(phase, (newPhase) => {
   if (newPhase === 'running') {
     analysisDialogVisible.value = true
@@ -344,7 +336,6 @@ watch(historyPageSize, () => {
   min-height: 0;
 }
 
-/* Dialog run-time popup layout */
 .running-modal-body {
   padding: 0;
   display: flex;

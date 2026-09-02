@@ -23,8 +23,11 @@ def analyze(
 
     image_bytes = file.file.read()
 
+    # 模型环境故障和无人脸等输入问题分开处理，两者都不会写入情绪记录。
     try:
         result = to_jsonable(emotion_svc.analyze_face(image_bytes))
+    except emotion_svc.EmotionModelUnavailableError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     except ValueError as e:
         return {"code": 200, "message": str(e), "data": None}
 
@@ -48,7 +51,7 @@ def analyze(
     )
     db.add(record)
 
-    # 中高风险时生成预警
+    # medium/high 的识别记录与对应预警在同一事务中提交。
     if risk_level in ("medium", "high"):
         warning = RiskWarning(
             user_id=user.id,

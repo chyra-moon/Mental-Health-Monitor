@@ -54,7 +54,6 @@ const logEntries = computed(() => {
     list.push('报告整理完成')
   }
   
-  // 只返回最后两条日志，保持简洁
   return list.slice(-2)
 })
 </script>

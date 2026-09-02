@@ -35,13 +35,12 @@ async function updateChart() {
   await nextTick()
   if (!chartRef.value) return
 
-  // Sort frames by index
   const sortedFrames = [...props.frameResults].sort((a, b) => a.frame_index - b.frame_index)
   
   const xData = sortedFrames.map(f => `${f.frame_index + 1}`)
   const labelInterval = Math.max(0, Math.ceil(sortedFrames.length / 8) - 1)
   
-  // Track key emotions: happy, neutral, sad, angry, fear
+  // 曲线聚焦五类主要情绪，完整分数仍保留在帧记录中。
   const targetEmotions = ['happy', 'neutral', 'sad', 'angry', 'fear']
   
   const series = targetEmotions.map(emotion => {

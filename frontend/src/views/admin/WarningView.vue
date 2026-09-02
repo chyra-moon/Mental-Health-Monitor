@@ -15,7 +15,6 @@
       :closable="false"
     />
 
-    <!-- Layer 1: Metrics stats -->
     <section class="triage-summary" v-loading="loading">
       <MetricCard label="待跟进预警数" :value="pendingCount" unit="条" note="需要线下干预确认并更新状态" :tone="pendingCount ? 'warning' : 'stable'" icon="bell" />
       <MetricCard label="重点关注高危数" :value="highPendingCount" unit="条" note="建议 2 小时内开启排查干预" :tone="highPendingCount ? 'danger' : 'stable'" icon="warning" />
@@ -23,7 +22,6 @@
       <MetricCard label="今日已完成跟进" :value="handledTodayCount" unit="条" note="表示今日更新状态的预警数量" tone="info" icon="check" />
     </section>
 
-    <!-- Layer 2: Fixed height table card with pagination -->
     <el-card class="warning-table-card" shadow="never">
       <template #header>
         <div class="table-toolbar">
@@ -118,7 +116,6 @@
       </div>
     </el-card>
 
-    <!-- 预警处置详情子窗口 (Dialog) -->
     <el-dialog
       v-model="detailVisible"
       title="预警处置详情"
@@ -473,7 +470,6 @@ onMounted(loadWarnings)
   margin-top: 14px;
 }
 
-/* Detail dialogue styling */
 .detail-content {
   display: flex;
   flex-direction: column;

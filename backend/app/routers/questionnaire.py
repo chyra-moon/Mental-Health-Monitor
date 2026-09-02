@@ -21,11 +21,11 @@ def submit(answers: list[int], user: User = Depends(get_current_user), db: Sessi
     if len(answers) != len(QUESTIONS):
         return {"code": 400, "message": f"需要回答 {len(QUESTIONS)} 道题", "data": None}
 
+    # 各题按选项值 0-3 直接相加，不做反向计分。
     total_score = sum(answers)
     if any(v < 0 or v > 3 for v in answers):
         return {"code": 400, "message": "每题分数必须在 0-3 之间", "data": None}
 
-    # 获取最近一次情绪记录
     from app.models.record import EmotionRecord
     latest_emotion = (
         db.query(EmotionRecord)
@@ -35,6 +35,7 @@ def submit(answers: list[int], user: User = Depends(get_current_user), db: Sessi
     )
     dominant = latest_emotion.dominant_emotion if latest_emotion else "neutral"
 
+    # evaluate_risk 同时使用本次总分、dominant 和该学生的负面情绪记录数。
     risk_level, reason, suggestion = evaluate_risk(user.id, dominant, total_score, db)
 
     qr = QuestionnaireRecord(
@@ -45,6 +46,7 @@ def submit(answers: list[int], user: User = Depends(get_current_user), db: Sessi
     )
     db.add(qr)
 
+    # medium/high 的问卷记录与对应预警在同一事务中提交。
     if risk_level in ("medium", "high"):
         from app.models.record import RiskWarning
         warning = RiskWarning(

@@ -34,7 +34,6 @@
           <template #default="{ row }">{{ row.gender || '-' }}</template>
         </el-table-column>
         
-        <!-- Interactive header class selection filter -->
         <el-table-column prop="class_name" label="班级" min-width="170" sortable="custom">
           <template #header>
             <el-select
@@ -103,12 +102,10 @@ const sortOrder = ref('')
 const filteredStudents = computed(() => {
   let list = [...students.value]
   
-  // Apply class filter
   if (selectedClassFilter.value) {
     list = list.filter(student => student.class_name === selectedClassFilter.value)
   }
 
-  // Apply sorting
   if (sortProp.value && sortOrder.value) {
     const prop = sortProp.value
     const order = sortOrder.value === 'ascending' ? 1 : -1
@@ -117,7 +114,6 @@ const filteredStudents = computed(() => {
       let valA = a[prop]
       let valB = b[prop]
       
-      // Fallback for nulls
       if (valA === null || valA === undefined) valA = ''
       if (valB === null || valB === undefined) valB = ''
       

@@ -50,7 +50,6 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 
     token = create_token(user.id, user.role)
 
-    # 获取班级名
     class_name = None
     if user.class_id:
         cls = db.get(Class, user.class_id)
@@ -108,7 +107,7 @@ def update_profile(
     db.commit()
     db.refresh(user)
 
-    # 自动创建学生视频文件夹 vedio/{班级名}/{学生名}/
+    # 为学生创建打卡摄像头采集目录 vedio/{班级名}/{学生名}/
     if user.class_id and user.real_name:
         cls = db.get(Class, user.class_id)
         if cls:

@@ -46,7 +46,6 @@ const { render: renderLine, resize: resizeLine } = useEcharts(lineRef)
 function drawCharts() {
   if (!props.records.length) return
 
-  // 1. Emotion distribution (Pie chart)
   const emotionCounts = {}
   props.records.forEach(r => {
     if (r.dominant_emotion) {
@@ -87,7 +86,6 @@ function drawCharts() {
     ]
   })
 
-  // 2. Risk distribution (Bar chart)
   const riskCounts = { low: 0, medium: 0, high: 0 }
   props.records.forEach(r => {
     if (r.risk_level && riskCounts[r.risk_level] !== undefined) {

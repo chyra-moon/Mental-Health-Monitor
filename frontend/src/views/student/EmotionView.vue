@@ -12,7 +12,6 @@
     />
 
     <div class="emotion-grid">
-      <!-- Left Column: Camera / Upload control -->
       <div class="left-column">
         <el-card class="capture-card" shadow="never">
           <template #header>
@@ -67,7 +66,6 @@
             </el-upload>
           </div>
 
-          <!-- Start Action -->
           <div class="submit-action-row">
             <el-button 
               type="primary" 
@@ -82,7 +80,6 @@
         </el-card>
       </div>
 
-      <!-- Right Column: Operating Instructions & FAQ -->
       <div class="right-column">
         <el-card class="guide-card" shadow="never">
           <template #header>
@@ -115,7 +112,6 @@
       </div>
     </div>
 
-    <!-- 识别中过程进度子窗口 (Modal Dialog) -->
     <el-dialog
       v-model="processVisible"
       title="正在执行情绪识别分析..."
@@ -145,7 +141,6 @@
       </div>
     </el-dialog>
 
-    <!-- 识别结果详情子窗口 (Modal Dialog) -->
     <el-dialog
       v-model="resultVisible"
       title="情绪识别分析报告"
@@ -305,7 +300,6 @@ const resultImageResolution = ref('标准预览画面')
 const analysisSourceLabel = ref('-')
 const analysisCapturedAt = ref('-')
 
-// Process dialog status
 const processVisible = ref(false)
 const processPercentage = ref(0)
 const processStatusText = ref('')
@@ -434,7 +428,7 @@ function handleFileChange(file) {
   previewUrl.value = URL.createObjectURL(file.raw)
 }
 
-// Progress simulator
+// 这里仅模拟前端进度展示，识别结果仍来自已发出的后端请求。
 function simulateProcess(callback) {
   processPercentage.value = 0
   processLogs.value = []
@@ -531,7 +525,6 @@ function goToEmotionRecords() {
   })
 }
 
-// Emotion specific action tips
 function emotionTips(emotion) {
   const tips = {
     happy: ['继续保持开心的心态，可以与周围人分享你的喜悦。', '今天是个精力充沛的一天，适合完成一些有挑战性的学习任务。', '给自己一个微小的奖励，保持积极向上的心流状态。'],
@@ -857,7 +850,6 @@ const formatPercent = (val) => {
   color: var(--mh-muted);
 }
 
-/* Process dialogue */
 .process-container {
   display: flex;
   flex-direction: column;
@@ -903,7 +895,6 @@ const formatPercent = (val) => {
   color: var(--mh-success);
 }
 
-/* Result dialog */
 :deep(.emotion-result-dialog .el-dialog__body) {
   padding-top: 12px;
 }

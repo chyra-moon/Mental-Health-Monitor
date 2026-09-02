@@ -37,7 +37,6 @@ export function useVideoSessionAnalysis({
     return Math.round((completedFrameCount.value / frameCount.value) * 100)
   })
 
-  // 按钮文案和状态
   const primaryButtonLabel = computed(() => {
     if (phase.value === 'running') return '正在分析...'
     if (phase.value === 'completed') return '重新分析'
@@ -58,7 +57,6 @@ export function useVideoSessionAnalysis({
     return !canStart.value && phase.value !== 'completed'
   })
 
-  // 重置状态
   function clearLastAnalyzedVideo() {
     clearAnalysisVideoObjectUrl()
     phase.value = 'idle'
@@ -81,13 +79,13 @@ export function useVideoSessionAnalysis({
   }
 
   function clearAnalysisVideoObjectUrl() {
+    // 学生切换、弹窗关闭或重新分析时释放 Object URL，避免旧采集记录的 Blob 常驻内存。
     if (analysisVideoObjectUrl) {
       URL.revokeObjectURL(analysisVideoObjectUrl)
       analysisVideoObjectUrl = ''
     }
   }
 
-  // 核心操作：开始/主操作
   async function handlePrimaryAction() {
     if (phase.value === 'completed') {
       clearLastAnalyzedVideo()
@@ -113,13 +111,12 @@ export function useVideoSessionAnalysis({
     analysisVideoFilename.value = ''
 
     try {
-      // 1. 创建视频分析会话
       const sessionRes = await createVideoSession(selectedStudentId.value, frameCount.value)
       const sessionData = sessionRes.data
       currentSessionId.value = sessionData.id
       analysisVideoFilename.value = sessionData.video_filename || ''
 
-      // 2. 受保护视频流需要先带登录态拉取为 Blob，再交给 video 标签播放
+      // 打卡摄像头完成采集并落盘后，通过鉴权接口读取该次记录，再创建分析所需的 Object URL。
       const videoBlob = await fetchVideoBlob(sessionData.stream_src)
       analysisVideoObjectUrl = URL.createObjectURL(videoBlob)
       analysisVideoSrc.value = analysisVideoObjectUrl
@@ -133,9 +130,9 @@ export function useVideoSessionAnalysis({
     }
   }
 
-  // 视频加载元数据回调
   function onVideoMeta(event) {
     const video = event.target
+    // loadedmetadata 可能重复触发，captureStarted 保证同一会话只启动一次抽帧循环。
     if (phase.value !== 'running' || !currentSessionId.value || captureStarted.value) return
     videoRef.value = video
     videoDuration.value = video.duration || 0
@@ -144,7 +141,6 @@ export function useVideoSessionAnalysis({
       return
     }
     
-    // 计算抽帧间隔 (秒)
     const intervalSec = videoDuration.value / (frameCount.value + 1)
     captureIntervalMs.value = Math.max(0.5, intervalSec) * 1000
 
@@ -152,7 +148,6 @@ export function useVideoSessionAnalysis({
     startCaptureLoop(video)
   }
 
-  // 抽帧采集逻辑
   async function startCaptureLoop(video) {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
@@ -160,9 +155,11 @@ export function useVideoSessionAnalysis({
     try {
       video.pause()
 
+      // 每帧完成定位、渲染、编码和上传后再处理下一帧，保持 frame_index 顺序。
       for (let frameIdx = 0; frameIdx < frameCount.value; frameIdx++) {
         if (phase.value !== 'running') return
 
+        // 采样点按 (frameIdx + 1) / (frameCount + 1) 分布，避开采集记录的首帧和结束边界。
         const targetTime = Math.min(
           Math.max((frameIdx + 1) * (videoDuration.value / (frameCount.value + 1)), 0),
           Math.max(videoDuration.value - 0.05, 0)
@@ -187,6 +184,7 @@ export function useVideoSessionAnalysis({
             frameResults.value.push(frameRes.data)
           }
         } catch (err) {
+          // 单帧上传失败只追加前端 error 结果，后续帧仍继续处理。
           frameResults.value.push({
             frame_index: frameIdx,
             timestamp_ms: timestampMs,
@@ -227,6 +225,7 @@ export function useVideoSessionAnalysis({
         reject(new Error('视频定位超时，请确认视频编码可被浏览器播放'))
       }
       const cleanup = () => {
+        // seek 完成、失败或超时后都移除监听器和定时器，避免旧回调影响后续采样。
         clearTimeout(timer)
         video.removeEventListener('seeked', finish)
         video.removeEventListener('error', fail)
@@ -244,6 +243,7 @@ export function useVideoSessionAnalysis({
   }
 
   function waitForRenderableFrame(video) {
+    // seeked 只表示定位完成；浏览器支持时再等待对应采集帧可供 Canvas 绘制。
     if ('requestVideoFrameCallback' in video) {
       return new Promise((resolve) => {
         const timer = setTimeout(resolve, 180)
@@ -268,7 +268,6 @@ export function useVideoSessionAnalysis({
     })
   }
 
-  // 完成分析
   async function finishAnalysis() {
     try {
       if (videoRef.value) {

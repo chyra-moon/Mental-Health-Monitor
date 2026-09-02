@@ -272,7 +272,6 @@ const handleLogout = () => {
   box-sizing: border-box;
 }
 
-/* Transitions */
 .fade-transform-enter-active,
 .fade-transform-leave-active {
   transition: all 0.2s ease;

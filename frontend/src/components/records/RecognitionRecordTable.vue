@@ -63,7 +63,6 @@
       />
     </div>
 
-    <!-- 记录详情子窗口 (Dialog) -->
     <el-dialog
       v-model="dialogVisible"
       title="识别分析详情"
@@ -339,7 +338,6 @@ const formatPercent = (val) => {
   margin-top: 14px;
 }
 
-/* Detail modal styling */
 :deep(.record-detail-dialog .el-dialog__body) {
   padding-top: 12px;
 }

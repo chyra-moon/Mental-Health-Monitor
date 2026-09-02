@@ -16,7 +16,6 @@
       :closable="false"
     />
 
-    <!-- Layer 1: Stat cards -->
     <div class="triage-grid" v-loading="loading">
       <MetricCard
         v-for="item in triageMetrics"
@@ -30,9 +29,7 @@
       />
     </div>
 
-    <!-- Layer 2: Priority Queue and Class Risk (Fixed height boxes) -->
     <div class="command-grid">
-      <!-- Priority queue -->
       <el-card class="priority-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-heading">
@@ -64,7 +61,6 @@
         </div>
       </el-card>
 
-      <!-- Class Risk status -->
       <el-card class="class-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="section-heading">
@@ -88,7 +84,6 @@
       </el-card>
     </div>
 
-    <!-- Layer 3: Trend & Emotion distribution -->
     <div class="insight-grid">
       <el-card class="trend-panel" shadow="never" v-loading="loading">
         <template #header>
@@ -129,7 +124,6 @@
       </el-card>
     </div>
 
-    <!-- 预警处置子窗口 (Dialog) -->
     <el-dialog
       v-model="triageVisible"
       title="预警跟进处置"
@@ -561,7 +555,6 @@ onMounted(loadData)
   font-weight: 700;
 }
 
-/* Triage modal details */
 .triage-dialog-content {
   display: flex;
   flex-direction: column;

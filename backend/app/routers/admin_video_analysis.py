@@ -43,7 +43,7 @@ EMOTION_CN = {
 }
 RISK_CN = {"low": "低风险", "medium": "中风险", "high": "高风险"}
 
-# 匹配已处理文件名: YYYY.M.D-情绪-风险.ext
+# 文件名以“YYYY.M.D-”开头时视为摄像头采集记录已归档，不再进入待分析列表。
 ANALYZED_PATTERN = re.compile(r"^\d{4}\.\d{1,2}\.\d{1,2}-.+$")
 
 
@@ -57,6 +57,7 @@ def _get_student_folder(student_id: int, db: Session) -> Path | None:
         return None
     if not student.real_name:
         return None
+    # 打卡摄像头采集文件按班级名和学生姓名分目录保存，缺少任一项时不继续查找。
     return VIDEO_DIR / cls.name / student.real_name
 
 
@@ -99,8 +100,6 @@ def _build_session_response(session: VideoAnalysisSession, db: Session) -> dict:
         "ended_at": session.ended_at.isoformat() if session.ended_at else None,
     }
 
-
-# ---- 端点 ----
 
 @router.get("/check/{student_id}")
 def check_video(student_id: int, user: User = Depends(require_role("admin")), db: Session = Depends(get_db)):
@@ -150,6 +149,7 @@ def stream_video(
     if not folder:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="无法定位学生视频目录")
 
+    # filename 只取 basename，避免请求参数中的路径片段改变目标目录。
     safe_filename = Path(filename).name
     file_path = folder / safe_filename
     if not file_path.is_file() or file_path.suffix.lower() not in EXT_WHITELIST:
@@ -173,12 +173,12 @@ def create_session(
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="学生不存在")
 
-    # 检查是否有同学生进行中的任务
     running = db.query(VideoAnalysisSession).filter(
         VideoAnalysisSession.student_id == student_id,
         VideoAnalysisSession.status == "running",
     ).first()
     if running:
+        # 已有 running 会话未保存帧时先标记失败；已有帧则拒绝重复创建。
         if (running.analyzed_frames or 0) == 0:
             running.status = "failed"
             running.reason = "上一次分析未采集到视频帧，已自动释放会话。"
@@ -250,6 +250,7 @@ def analyze_frame(
 
     image_bytes = file.file.read()
 
+    # 摄像头采集帧无论识别结果如何都保留序号和时间戳，便于区分有效帧与失败帧。
     def _save_frame(status_, dom_emo=None, conf=None, scores=None, err_msg=None):
         f = VideoFrameEmotionRecord(
             session_id=session_id,
@@ -270,6 +271,9 @@ def analyze_frame(
 
     try:
         result = to_jsonable(emotion_svc.analyze_video_frame(image_bytes))
+    except emotion_svc.EmotionModelUnavailableError as e:
+        _save_frame("error", err_msg=str(e))
+        return {"code": 503, "message": str(e), "data": None}
     except ValueError as e:
         f = _save_frame("no_face", err_msg=str(e))
         return {
@@ -311,6 +315,7 @@ def complete_session(
     if session.status != "running":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="会话已结束")
 
+    # 无人脸和识别失败仍保留在采集帧明细中，风险聚合只读取 status 为 ok 的帧。
     ok_frames = (
         db.query(VideoFrameEmotionRecord)
         .filter(
@@ -366,6 +371,7 @@ def complete_session(
     negative_count = sum(1 for f in ok_frames if f.dominant_emotion in NEGATIVE_EMOTIONS)
     dominant_negative_ratio = negative_count / len(ok_frames)
     score_negative_ratio = negative_score_frame_count / len(ok_frames)
+    # negative_ratio 取主导情绪负面帧占比和负面分值和达到 0.35 的帧占比中的较大值。
     negative_ratio = round(max(dominant_negative_ratio, score_negative_ratio), 4)
 
     strongest_negative_emotion = max(
@@ -373,6 +379,7 @@ def complete_session(
         key=lambda emo: float(average_emotion_scores.get(emo, 0) or 0),
     )
     strongest_negative_score = float(average_emotion_scores.get(strongest_negative_emotion, 0) or 0)
+    # 汇总主导情绪为 neutral 时，负面情绪最高均值达到 0.2 就改用对应负面情绪。
     if dominant_emotion == "neutral" and strongest_negative_score >= 0.2:
         dominant_emotion = strongest_negative_emotion
 
@@ -401,6 +408,7 @@ def complete_session(
     session.suggestion = suggestion
     session.ended_at = datetime.now()
 
+    # medium/high 的摄像头采集分析会话同步生成学生预警，并在 reason 中保留来源。
     if risk_level in ("medium", "high"):
         warning = RiskWarning(
             user_id=session.student_id,
@@ -410,7 +418,6 @@ def complete_session(
         )
         db.add(warning)
 
-    # 重命名视频文件
     _rename_video(session)
 
     db.commit()
